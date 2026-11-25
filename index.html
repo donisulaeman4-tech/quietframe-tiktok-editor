@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="id">
   <head>
@@ -11,7 +12,9 @@
   <body>
     <div id="app">
       <header class="topbar">
-        <a class="brand" href="./" aria-label="QuietFrame home"><span class="brand-mark">Q</span><span>quietframe</span></a>
+        <a class="brand" href="./" aria-label="QuietFrame home">
+          <span class="brand-mark">Q</span><span>quietframe</span>
+        </a>
         <span class="local-pill"><i></i> Pemrosesan lokal</span>
       </header>
 
@@ -24,7 +27,11 @@
 
         <section class="workspace">
           <div class="editor">
-            <div class="section-heading"><span class="step">01</span><div><h2>Video kamu</h2><p>MP4, MOV atau WebM · maksimal 20 detik</p></div></div>
+            <div class="section-heading">
+              <span class="step">01</span>
+              <div><h2>Video kamu</h2><p>MP4, MOV atau WebM · maksimal 20 detik</p></div>
+            </div>
+
             <label class="upload" for="videoFile" id="uploadBox">
               <span class="upload-icon">＋</span>
               <strong>Pilih video</strong>
@@ -33,11 +40,22 @@
             </label>
             <div class="video-meta" id="videoMeta" hidden></div>
 
-            <div class="section-heading text-heading"><span class="step">02</span><div><h2>Tulis kata-katamu</h2><p>Teks akan menyesuaikan panjang kalimat secara otomatis.</p></div></div>
-            <textarea id="quoteText" maxlength="650" placeholder="Hiduplah dengan tenang dan sederhana.&#10;Tak perlu semua orang tahu perjalananmu..."></textarea>
-            <div class="field-foot"><span>Gunakan baris baru untuk mengatur jeda paragraf.</span><span id="charCount">0/650</span></div>
+            <div class="section-heading text-heading">
+              <span class="step">02</span>
+              <div><h2>Tulis kata-katamu</h2><p>Teks akan menyesuaikan panjang kalimat secara otomatis.</p></div>
+            </div>
 
-            <div class="section-heading style-heading"><span class="step">03</span><div><h2>Nuansa video</h2><p>Pilih tampilan yang paling cocok.</p></div></div>
+            <textarea id="quoteText" maxlength="650" placeholder="Hiduplah dengan tenang dan sederhana.&#10;Tak perlu semua orang tahu perjalananmu..."></textarea>
+            <div class="field-foot">
+              <span>Gunakan baris baru untuk mengatur jeda paragraf.</span>
+              <span id="charCount">0/650</span>
+            </div>
+
+            <div class="section-heading style-heading">
+              <span class="step">03</span>
+              <div><h2>Nuansa video</h2><p>Pilih tampilan yang paling cocok.</p></div>
+            </div>
+
             <div class="style-options" role="group" aria-label="Pilihan filter">
               <button class="style-option active" data-style="cinematic" type="button"><span class="swatch cinematic-swatch"></span><b>Cinematic Dark</b><small>Dramatis & gelap</small></button>
               <button class="style-option" data-style="blue" type="button"><span class="swatch blue-swatch"></span><b>Moody Blue</b><small>Dingin & tenang</small></button>
@@ -46,38 +64,110 @@
               <button class="style-option" data-style="soft" type="button"><span class="swatch soft-swatch"></span><b>Soft Film</b><small>Lembut natural</small></button>
               <button class="style-option" data-style="deep" type="button"><span class="swatch deep-swatch"></span><b>Deep Contrast</b><small>Tegas & kuat</small></button>
             </div>
+
             <div class="control-grid">
-              <label class="control-field" for="filterStrength"><span>Intensitas filter <output id="filterStrengthValue">70%</output></span><input id="filterStrength" type="range" min="0" max="100" value="70" /></label>
-              <label class="control-field" for="blurStrength"><span>Blur latar teks <output id="blurStrengthValue">8</output></span><input id="blurStrength" type="range" min="0" max="18" value="8" /></label>
+              <label class="control-field" for="filterStrength">
+                <span>Intensitas filter <output id="filterStrengthValue">70%</output></span>
+                <input id="filterStrength" type="range" min="0" max="100" value="70" />
+              </label>
+              <label class="control-field" for="blurStrength">
+                <span>Blur latar teks <output id="blurStrengthValue">8</output></span>
+                <input id="blurStrength" type="range" min="0" max="18" value="8" />
+              </label>
             </div>
 
-            <div class="section-heading style-heading"><span class="step">04</span><div><h2>Gaya tulisan</h2><p>Pilih karakter font untuk suasana kutipan.</p></div></div>
+            <div class="section-heading style-heading">
+              <span class="step">04</span>
+              <div><h2>Gaya tulisan</h2><p>Pilih karakter font untuk suasana kutipan.</p></div>
+            </div>
+
             <div class="font-options" role="group" aria-label="Pilihan font">
               <button class="font-option active" data-font="serif" type="button"><strong class="sample-serif">Aa</strong><b>Elegant Serif</b><small>Emosional & elegan</small></button>
               <button class="font-option" data-font="clean" type="button"><strong class="sample-clean">Aa</strong><b>Modern Clean</b><small>Bersih & minimal</small></button>
               <button class="font-option" data-font="bold" type="button"><strong class="sample-bold">Aa</strong><b>Bold Impact</b><small>Tegas & berani</small></button>
               <button class="font-option" data-font="soft" type="button"><strong class="sample-soft">Aa</strong><b>Soft Minimal</b><small>Tipis & lembut</small></button>
             </div>
+
             <div class="control-grid">
-              <label class="control-field" for="textColor">Warna teks<select id="textColor"><option value="#ffffff">Putih</option><option value="#f0dfc3">Krem</option><option value="#e8e8e8">Abu terang</option></select></label>
-              <label class="control-field" for="textPosition">Posisi teks<select id="textPosition"><option value="center">Tengah area aman</option><option value="upper">Agak atas</option><option value="lower">Agak bawah</option></select></label>
+              <label class="control-field" for="textColor">
+                Warna teks
+                <select id="textColor">
+                  <option value="#ffffff">Putih</option>
+                  <option value="#f0dfc3">Krem</option>
+                  <option value="#e8e8e8">Abu terang</option>
+                </select>
+              </label>
+              <label class="control-field" for="textPosition">
+                Posisi teks
+                <select id="textPosition">
+                  <option value="center">Tengah area aman</option>
+                  <option value="upper">Agak atas</option>
+                  <option value="lower">Agak bawah</option>
+                </select>
+              </label>
             </div>
 
-            <div class="section-heading style-heading"><span class="step">05</span><div><h2>Ekspor & audio</h2><p>Atur kualitas dan suara sebelum membuat video.</p></div></div>
+            <!-- Pengaturan ukuran dan perataan teks -->
+            <div class="text-layout-controls">
+              <label class="control-field" for="textSize">
+                <span>Ukuran teks <output id="textSizeValue">64 px</output></span>
+                <input id="textSize" type="range" min="36" max="90" value="64" />
+              </label>
+
+              <div class="control-field">
+                <span>Perataan teks</span>
+                <div class="alignment-options">
+                  <button type="button" class="align-option" data-align="left" aria-pressed="false">Kiri</button>
+                  <button type="button" class="align-option active" data-align="center" aria-pressed="true">Tengah</button>
+                  <button type="button" class="align-option" data-align="right" aria-pressed="false">Kanan</button>
+                </div>
+              </div>
+
+              <label class="auto-fit-option" for="autoFit">
+                <input id="autoFit" type="checkbox" checked />
+                <span>
+                  <strong>Rapikan otomatis</strong>
+                  <small>Ukuran tulisan menyesuaikan panjang kutipan agar tetap muat.</small>
+                </span>
+              </label>
+            </div>
+
+            <div class="section-heading style-heading">
+              <span class="step">05</span>
+              <div><h2>Ekspor & audio</h2><p>Atur kualitas dan suara sebelum membuat video.</p></div>
+            </div>
+
             <div class="control-grid">
-              <label class="control-field" for="resolution"><span>Resolusi video</span><select id="resolution"><option value="1080" selected>Full HD · 1080 × 1920</option><option value="720">HD · 720 × 1280</option></select></label>
-              <label class="control-field" for="audioMode"><span>Audio</span><select id="audioMode"><option value="original" selected>Pertahankan suara asli</option><option value="mute">Mute · tanpa suara</option></select></label>
+              <label class="control-field" for="resolution">
+                <span>Resolusi video</span>
+                <select id="resolution">
+                  <option value="1080" selected>Full HD · 1080 × 1920</option>
+                  <option value="720">HD · 720 × 1280</option>
+                </select>
+              </label>
+              <label class="control-field" for="audioMode">
+                <span>Audio</span>
+                <select id="audioMode">
+                  <option value="original" selected>Pertahankan suara asli</option>
+                  <option value="mute">Mute · tanpa suara</option>
+                </select>
+              </label>
             </div>
 
             <div class="actions">
               <button class="primary" id="renderBtn" type="button" disabled><span>✦</span> Proses video</button>
               <p class="privacy">Video diproses di browser perangkatmu. File tidak dikirim ke server aplikasi. Ekspor 1080p lebih berat untuk HP.</p>
             </div>
+
             <div class="progress-wrap" id="progressWrap" hidden>
-              <div class="progress-top"><strong id="progressTitle">Menyiapkan editor…</strong><span id="progressPct">0%</span></div>
+              <div class="progress-top">
+                <strong id="progressTitle">Menyiapkan editor…</strong>
+                <span id="progressPct">0%</span>
+              </div>
               <div class="progress-track"><div id="progressBar"></div></div>
               <p id="progressNote">Pertama kali, mesin video perlu dimuat dari CDN (sekitar 30 MB).</p>
             </div>
+
             <div class="error" id="errorBox" role="alert" hidden></div>
           </div>
 
@@ -87,22 +177,38 @@
               <div class="preview-screen" id="previewScreen">
                 <video id="previewVideo" playsinline muted loop></video>
                 <div class="preview-shade"></div>
-                <div class="quote-panel" id="quotePanel"><p id="previewQuote">Hiduplah dengan tenang dan sederhana. Tak perlu semua orang tahu perjalananmu.</p></div>
-                <div class="mock-ui"><span class="mock-avatar"></span><span class="mock-heart">♥</span><span class="mock-comment">●</span><span class="mock-share">➤</span></div>
+                <div class="quote-panel" id="quotePanel">
+                  <p id="previewQuote">Hiduplah dengan tenang dan sederhana. Tak perlu semua orang tahu perjalananmu.</p>
+                </div>
+                <div class="mock-ui">
+                  <span class="mock-avatar"></span>
+                  <span class="mock-heart">♥</span>
+                  <span class="mock-comment">●</span>
+                  <span class="mock-share">➤</span>
+                </div>
                 <div class="mock-bottom"><b>@youraccount</b><span> · kata-kata hari ini</span></div>
               </div>
             </div>
+
             <p class="preview-caption">Pratinjau area aman. Tombol TikTok di kanan dan informasi akun di bawah tidak akan tertutup teks.</p>
+
             <div class="output-card" id="outputCard" hidden>
-              <div><span class="output-check">✓</span><div><b>Video selesai</b><small id="outputInfo">MP4 · 9:16</small></div></div>
+              <div>
+                <span class="output-check">✓</span>
+                <div><b>Video selesai</b><small id="outputInfo">MP4 · 9:16</small></div>
+              </div>
               <a id="downloadBtn" class="download" href="#" download="quietframe-tiktok.mp4">Unduh MP4 ↓</a>
             </div>
           </aside>
         </section>
 
-        <footer><span>QUIETFRAME</span><span>Made for meaningful moments</span></footer>
+        <footer>
+          <span>QUIETFRAME</span>
+          <span>Made for meaningful moments</span>
+        </footer>
       </main>
     </div>
+
     <script type="module" src="./src/main.js"></script>
   </body>
 </html>
