@@ -70,9 +70,20 @@
                 <span>Intensitas filter <output id="filterStrengthValue">70%</output></span>
                 <input id="filterStrength" type="range" min="0" max="100" value="70" />
               </label>
+            </div>
+
+            <div class="blur-controls">
+              <label class="blur-toggle" for="enableTextBlur">
+                <input id="enableTextBlur" type="checkbox" checked />
+                <span>
+                  <strong>Aktifkan blur di belakang teks</strong>
+                  <small>Blur hanya pada area di belakang tulisan. Video lainnya tetap tajam.</small>
+                </span>
+              </label>
+
               <label class="control-field" for="blurStrength">
-                <span>Blur latar teks <output id="blurStrengthValue">8</output></span>
-                <input id="blurStrength" type="range" min="0" max="18" value="8" />
+                <span>Intensitas blur <output id="blurStrengthValue">4px</output></span>
+                <input id="blurStrength" type="range" min="0" max="18" value="4" />
               </label>
             </div>
 
@@ -90,7 +101,7 @@
 
             <div class="control-grid">
               <label class="control-field" for="textColor">
-                Warna teks
+                <span>Warna teks</span>
                 <select id="textColor">
                   <option value="#ffffff">Putih</option>
                   <option value="#f0dfc3">Krem</option>
@@ -98,7 +109,7 @@
                 </select>
               </label>
               <label class="control-field" for="textPosition">
-                Posisi teks
+                <span>Posisi teks</span>
                 <select id="textPosition">
                   <option value="center">Tengah area aman</option>
                   <option value="upper">Agak atas</option>
@@ -107,7 +118,6 @@
               </label>
             </div>
 
-            <!-- Pengaturan ukuran dan perataan teks -->
             <div class="text-layout-controls">
               <label class="control-field" for="textSize">
                 <span>Ukuran teks <output id="textSizeValue">64 px</output></span>
@@ -204,7 +214,7 @@
 
         <footer>
           <span>QUIETFRAME</span>
-          <span>Made for meaningful moments</span>
+          <span>Created by Doni Sulaeman</span>
         </footer>
       </main>
     </div>
