@@ -1,3 +1,4 @@
+
 /* =========================================
    QUIETFRAME — COMPLETE RESPONSIVE STYLE
 ========================================= */
@@ -169,9 +170,7 @@ button:disabled {
   letter-spacing: 1.5px;
 }
 
-/* =========================================
-   SHARED COMPONENTS
-========================================= */
+/* SHARED COMPONENTS */
 
 .eyebrow {
   display: block;
@@ -337,9 +336,7 @@ input::placeholder {
   color: #666670;
 }
 
-/* =========================================
-   STAGE 1 — UPLOAD
-========================================= */
+/* STAGE 1 — UPLOAD */
 
 .upload-stage {
   width: min(620px, calc(100% - 32px));
@@ -563,9 +560,7 @@ input::placeholder {
   font-size: 9px;
 }
 
-/* =========================================
-   STAGE 2 — EDITOR LAYOUT
-========================================= */
+/* STAGE 2 — EDITOR */
 
 .editor-stage {
   width: min(1250px, calc(100% - 40px));
@@ -689,9 +684,7 @@ input::placeholder {
   );
 }
 
-/* =========================================
-   TIKTOK MOCK UI
-========================================= */
+/* TIKTOK MOCK UI */
 
 .mock-tiktok-ui {
   position: absolute;
@@ -876,9 +869,7 @@ input::placeholder {
   text-overflow: ellipsis;
 }
 
-/* =========================================
-   QUOTE TEXT PREVIEW
-========================================= */
+/* QUOTE TEXT PREVIEW */
 
 .quote-panel {
   position: absolute;
@@ -999,9 +990,7 @@ input::placeholder {
   letter-spacing: .4px;
 }
 
-/* =========================================
-   EDITOR CONTROLS
-========================================= */
+/* EDITOR CONTROLS */
 
 .controls-column {
   min-width: 0;
@@ -1204,9 +1193,7 @@ input::placeholder {
   background: #17130d;
 }
 
-/* =========================================
-   FONT OPTIONS
-========================================= */
+/* FONT OPTIONS */
 
 .font-grid {
   display: grid;
@@ -1275,9 +1262,7 @@ input::placeholder {
   font-style: italic;
 }
 
-/* =========================================
-   FILTER OPTIONS
-========================================= */
+/* FILTER OPTIONS */
 
 .filter-grid {
   display: grid;
@@ -1351,9 +1336,7 @@ input::placeholder {
   font-size: 9px;
 }
 
-/* =========================================
-   EDITOR BOTTOM
-========================================= */
+/* EDITOR BOTTOM */
 
 .editor-bottom {
   flex: 0 0 auto;
@@ -1363,9 +1346,7 @@ input::placeholder {
   min-height: 46px;
 }
 
-/* =========================================
-   STAGE 3 — EXPORT
-========================================= */
+/* STAGE 3 — EXPORT */
 
 .export-stage {
   width: min(620px, calc(100% - 32px));
@@ -1655,9 +1636,7 @@ input::placeholder {
   text-align: center;
 }
 
-/* =========================================
-   VIEWPORT MANAGEMENT
-========================================= */
+/* VIEWPORT MANAGEMENT */
 
 body[data-stage="1"],
 body[data-stage="2"] {
@@ -1689,9 +1668,7 @@ body[data-stage="2"] .app-footer {
   display: none;
 }
 
-/* =========================================
-   TABLET
-========================================= */
+/* TABLET */
 
 @media (max-width: 900px) {
   .editor-stage {
@@ -1720,9 +1697,7 @@ body[data-stage="2"] .app-footer {
   }
 }
 
-/* =========================================
-   MOBILE
-========================================= */
+/* MOBILE */
 
 @media (max-width: 600px) {
   :root {
@@ -1883,7 +1858,7 @@ body[data-stage="2"] .app-footer {
     font-size: 7px;
   }
 
-  /* EDITOR */
+  /* EDITOR MOBILE */
 
   .editor-stage {
     width: calc(100% - 16px);
@@ -2131,7 +2106,7 @@ body[data-stage="2"] .app-footer {
     line-height: 1.2;
   }
 
-  /* EXPORT */
+  /* EXPORT MOBILE */
 
   .export-stage {
     width: calc(100% - 24px);
@@ -2182,9 +2157,7 @@ body[data-stage="2"] .app-footer {
   }
 }
 
-/* =========================================
-   SMALL MOBILE
-========================================= */
+/* SMALL MOBILE */
 
 @media (max-width: 380px) {
   .editor-stage {
@@ -2232,9 +2205,7 @@ body[data-stage="2"] .app-footer {
   }
 }
 
-/* =========================================
-   VERY SHORT SCREENS
-========================================= */
+/* VERY SHORT SCREENS */
 
 @media (max-height: 650px) and (max-width: 600px) {
   .upload-stage {
@@ -2301,9 +2272,7 @@ body[data-stage="2"] .app-footer {
   }
 }
 
-/* =========================================
-   FULLSCREEN PREVIEW — INDEPENDENT LAYER
-========================================= */
+/* FULLSCREEN PREVIEW — INDEPENDENT LAYER */
 
 body.preview-expanded {
   overflow: hidden !important;
@@ -2393,9 +2362,7 @@ body.preview-expanded .preview-fullscreen-button {
   -webkit-backdrop-filter: blur(8px);
 }
 
-/* =========================================
-   EXPORT PAGE SCROLL
-========================================= */
+/* EXPORT PAGE SCROLL */
 
 body[data-stage="3"] {
   overflow-x: hidden;
@@ -2411,9 +2378,7 @@ body[data-stage="3"] .app-main {
   overflow: visible;
 }
 
-/* =========================================
-   ACCESSIBILITY
-========================================= */
+/* ACCESSIBILITY */
 
 @media (prefers-reduced-motion: reduce) {
   *,
