@@ -1,160 +1,160 @@
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
+
+import { FFmpeg } from "https://esm.sh/@ffmpeg/ffmpeg@0.12.6";
+import { fetchFile, toBlobURL } from "https://esm.sh/@ffmpeg/util@0.12.1";
 
 /* =========================================
-   QUIETFRAME — MAIN JAVASCRIPT
+   QUIETFRAME — VIDEO QUOTE EDITOR
 ========================================= */
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 
-const videoInput = $('#videoInput');
-const previewVideo = $('#previewVideo');
+const state = {
+  file: null,
+  videoURL: null,
+  outputURL: null,
+  ffmpeg: null,
+  ffmpegReady: false,
+  exporting: false,
 
-let uploadedFile = null;
-let videoURL = null;
-let exportedURL = null;
-let ffmpeg = null;
-let ffmpegReady = false;
-let exporting = false;
+  stage: 1,
+  duration: 15,
+  resolution: 1080,
 
-const settings = {
-  font: 'serif',
-  filter: 'normal',
-  position: 'center',
-  alignment: 'center',
-  color: '#ffffff',
-  size: 32,
+  text: "",
+  textSize: 32,
+  textColor: "#ffffff",
+  font: "serif",
+  position: "center",
+  alignment: "center",
   offset: 0,
+  autoFit: true,
   paragraphGap: 12,
-  blur: false,
+
+  blurEnabled: false,
   blurStrength: 8,
+
+  filter: "normal",
+
   brightness: 100,
   contrast: 100,
   saturation: 100,
   temperature: 0
 };
 
+const FONT_MAP = {
+  serif: 'Georgia, "Times New Roman", serif',
+  clean: 'Arial, Helvetica, sans-serif',
+  bold: 'Arial, Helvetica, sans-serif',
+  soft: 'Trebuchet MS, Arial, sans-serif',
+  classic: '"Palatino Linotype", Palatino, serif',
+  modern: 'Arial, Helvetica, sans-serif',
+  typewriter: '"Courier New", monospace',
+  editorial: 'Georgia, serif'
+};
+
+const FILTER_MAP = {
+  normal: "",
+  cinematic: "contrast=1.15:saturation=0.82:brightness=-0.025",
+  blue: "colorbalance=bs=0.12:bm=0.04:rs=-0.04",
+  warm: "colorbalance=rs=0.10:gs=0.035:bs=-0.10",
+  mono: "hue=s=0:contrast=1.08",
+  soft: "eq=contrast=0.92:saturation=0.85:brightness=0.025",
+  deep: "eq=contrast=1.22:saturation=1.08:brightness=-0.035",
+  golden: "colorbalance=rs=0.12:gs=0.05:bs=-0.13:saturation=1.12",
+  night: "eq=brightness=-0.08:contrast=1.12:saturation=0.75"
+};
+
+const FILTER_PREVIEW = {
+  normal: "",
+  cinematic: "contrast(1.15) saturate(.82) brightness(.97)",
+  blue: "hue-rotate(8deg) saturate(.9)",
+  warm: "sepia(.22) saturate(1.12)",
+  mono: "grayscale(1) contrast(1.08)",
+  soft: "contrast(.92) saturate(.85) brightness(1.025)",
+  deep: "contrast(1.22) saturate(1.08) brightness(.965)",
+  golden: "sepia(.3) saturate(1.2)",
+  night: "brightness(.88) contrast(1.12) saturate(.75)"
+};
+
 
 /* =========================================
-   STAGE NAVIGATION
+   ELEMENT REFERENCES
+========================================= */
+
+const videoInput = $("#videoInput");
+const uploadButton = $("#uploadButton");
+const selectedVideo = $("#selectedVideo");
+const videoFileName = $("#videoFileName");
+const videoFileSize = $("#videoFileSize");
+const removeVideo = $("#removeVideo");
+
+const quoteInput = $("#quoteInput");
+const editorQuote = $("#editorQuote");
+const characterCount = $("#characterCount");
+
+const startEditing = $("#startEditing");
+const backToUpload = $("#backToUpload");
+const continueToExport = $("#continueToExport");
+const backToEditor = $("#backToEditor");
+
+const previewVideo = $("#previewVideo");
+const previewScreen = $("#previewScreen");
+const previewQuote = $("#previewQuote");
+const quotePanel = $("#quotePanel");
+const quotePanelInner = $("#quotePanelInner");
+
+const previewPlay = $("#previewPlay");
+const playIcon = $("#playIcon");
+const toggleTikTokUI = $("#toggleTikTokUI");
+const mockTikTokUI = $("#mockTikTokUI");
+
+const textColor = $("#textColor");
+const customTextColor = $("#customTextColor");
+const textSize = $("#textSize");
+const textSizeValue = $("#textSizeValue");
+const textOffset = $("#textOffset");
+const textOffsetValue = $("#textOffsetValue");
+
+const autoFit = $("#autoFit");
+const paragraphGap = $("#paragraphGap");
+const paragraphGapValue = $("#paragraphGapValue");
+
+const blurEnabled = $("#blurEnabled");
+const blurStrength = $("#blurStrength");
+const blurStrengthValue = $("#blurStrengthValue");
+
+const resolution = $("#resolution");
+const durationHint = $("#durationHint");
+
+const exportButton = $("#exportButton");
+const downloadButton = $("#downloadButton");
+const exportProgress = $("#exportProgress");
+const progressLabel = $("#progressLabel");
+const progressPercent = $("#progressPercent");
+const progressBar = $("#progressBar");
+const exportResult = $("#exportResult");
+const exportError = $("#exportError");
+
+
+/* =========================================
+   GENERAL HELPERS
 ========================================= */
 
 function showStage(step) {
-  $$('.stage').forEach((stage) => {
+  state.stage = step;
+
+  $$(".stage").forEach((stage) => {
     stage.classList.toggle(
-      'active',
+      "active",
       Number(stage.dataset.step) === step
     );
   });
 
-  window.scrollTo({
-    top: 0,
-    behavior: 'smooth'
-  });
+  document.body.dataset.stage = String(step);
 
-  if (step === 2) {
-    updatePreviewText();
-    updateVideoFilter();
-  }
+  window.scrollTo({ top: 0, behavior: "instant" });
 }
-
-$('#backToUpload')?.addEventListener('click', () => {
-  showStage(1);
-});
-
-$('#backToEditor')?.addEventListener('click', () => {
-  showStage(2);
-});
-
-$('#continueToExport')?.addEventListener('click', () => {
-  if (!uploadedFile) {
-    alert('Silakan pilih video terlebih dahulu.');
-    return;
-  }
-
-  showStage(3);
-});
-
-
-/* =========================================
-   VIDEO UPLOAD
-========================================= */
-
-$('#uploadButton')?.addEventListener('click', () => {
-  videoInput.click();
-});
-
-videoInput?.addEventListener('change', (event) => {
-  const file = event.target.files?.[0];
-
-  if (!file) return;
-
-  if (!file.type.startsWith('video/')) {
-    alert('File yang dipilih bukan video.');
-    videoInput.value = '';
-    return;
-  }
-
-  uploadedFile = file;
-
-  if (videoURL) {
-    URL.revokeObjectURL(videoURL);
-  }
-
-  videoURL = URL.createObjectURL(file);
-
-  previewVideo.src = videoURL;
-  previewVideo.load();
-
-  $('#videoFileName').textContent = file.name;
-  $('#videoFileSize').textContent = formatFileSize(file.size);
-
-  $('#selectedVideo').classList.add('visible');
-  $('#uploadButton').classList.add('has-video');
-
-  $('#startEditing').disabled = false;
-
-  updatePreviewText();
-});
-
-$('#removeVideo')?.addEventListener('click', () => {
-  uploadedFile = null;
-
-  if (videoURL) {
-    URL.revokeObjectURL(videoURL);
-    videoURL = null;
-  }
-
-  previewVideo.removeAttribute('src');
-  previewVideo.load();
-
-  videoInput.value = '';
-
-  $('#selectedVideo').classList.remove('visible');
-  $('#uploadButton').classList.remove('has-video');
-
-  $('#videoFileName').textContent = 'Video belum dipilih';
-  $('#videoFileSize').textContent = 'Pilih video dari perangkat';
-
-  $('#startEditing').disabled = true;
-});
-
-$('#startEditing')?.addEventListener('click', () => {
-  if (!uploadedFile) {
-    alert('Pilih video terlebih dahulu.');
-    return;
-  }
-
-  const quote = $('#quoteInput').value.trim();
-
-  $('#editorQuote').value = quote;
-
-  updatePreviewText();
-  showStage(2);
-
-  previewVideo.play().catch(() => {});
-});
 
 function formatFileSize(bytes) {
   if (bytes < 1024 * 1024) {
@@ -164,200 +164,370 @@ function formatFileSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function setText(element, value) {
+  if (element) element.textContent = value;
+}
+
+function showError(message) {
+  exportError.textContent = message;
+  exportError.classList.add("visible");
+}
+
+function clearExportMessages() {
+  exportError.textContent = "";
+  exportError.classList.remove("visible");
+  exportResult.classList.remove("visible");
+  exportProgress.classList.remove("visible");
+}
+
+function updateCharacterCount() {
+  const value = quoteInput.value || "";
+  setText(characterCount, `${value.length}/500`);
+  startEditing.disabled = !state.file;
+}
+
 
 /* =========================================
-   QUOTE INPUT
+   VIDEO UPLOAD
 ========================================= */
 
-$('#quoteInput')?.addEventListener('input', () => {
-  const value = $('#quoteInput').value;
-
-  $('#characterCount').textContent = `${value.length}/500`;
-
-  if ($('#editorQuote')) {
-    $('#editorQuote').value = value;
-  }
-
-  updatePreviewText();
+uploadButton.addEventListener("click", () => {
+  videoInput.click();
 });
 
-$('#editorQuote')?.addEventListener('input', () => {
-  $('#quoteInput').value = $('#editorQuote').value;
+videoInput.addEventListener("change", (event) => {
+  const file = event.target.files?.[0];
 
-  const value = $('#quoteInput').value;
+  if (!file) return;
 
-  $('#characterCount').textContent = `${value.length}/500`;
-
-  updatePreviewText();
-});
-
-
-/* =========================================
-   PREVIEW TEXT
-========================================= */
-
-function updatePreviewText() {
-  const quote = $('#editorQuote')?.value || $('#quoteInput')?.value || '';
-
-  const previewQuote = $('#previewQuote');
-  const quotePanel = $('#quotePanel');
-  const quoteInner = $('#quotePanelInner');
-
-  if (!previewQuote || !quotePanel || !quoteInner) return;
-
-  previewQuote.textContent = quote || 'Tulis kutipan kamu di sini.';
-
-  settings.size = Number($('#textSize')?.value || 32);
-  settings.color = $('#customTextColor')?.value || $('#textColor')?.value || '#ffffff';
-
-  previewQuote.style.color = settings.color;
-  previewQuote.style.fontSize = `${settings.size}px`;
-  previewQuote.style.textAlign = settings.alignment;
-  previewQuote.style.lineHeight = '1.28';
-
-  previewQuote.style.fontFamily = getFontFamily(settings.font);
-
-  previewQuote.style.whiteSpace = 'pre-wrap';
-  previewQuote.style.overflowWrap = 'anywhere';
-
-  quotePanel.style.setProperty(
-    '--quote-offset',
-    `${settings.offset}%`
-  );
-
-  quotePanel.classList.toggle('blur-active', settings.blur);
-
-  quoteInner.style.backdropFilter = settings.blur
-    ? `blur(${settings.blurStrength}px)`
-    : 'none';
-
-  quoteInner.style.webkitBackdropFilter = settings.blur
-    ? `blur(${settings.blurStrength}px)`
-    : 'none';
-
-  quoteInner.style.background = settings.blur
-    ? 'rgba(0,0,0,0.16)'
-    : 'transparent';
-
-  quoteInner.style.padding = settings.blur
-    ? '12px 14px'
-    : '0';
-
-  quoteInner.style.borderRadius = settings.blur
-    ? '10px'
-    : '0';
-
-  quotePanel.classList.remove('position-top', 'position-center', 'position-bottom');
-  quotePanel.classList.add(`position-${settings.position}`);
-
-  updateParagraphSpacing();
-  autoFitPreviewText();
-}
-
-function getFontFamily(font) {
-  const fonts = {
-    serif: 'Georgia, "Times New Roman", serif',
-    clean: 'Arial, Helvetica, sans-serif',
-    bold: 'Arial, Helvetica, sans-serif',
-    soft: '"Trebuchet MS", Arial, sans-serif',
-    classic: 'Palatino, "Book Antiqua", serif',
-    modern: 'Verdana, sans-serif',
-    typewriter: '"Courier New", monospace',
-    editorial: 'Baskerville, Georgia, serif'
-  };
-
-  return fonts[font] || fonts.serif;
-}
-
-function updateParagraphSpacing() {
-  const previewQuote = $('#previewQuote');
-
-  if (!previewQuote) return;
-
-  previewQuote.style.setProperty(
-    '--paragraph-gap',
-    `${settings.paragraphGap}px`
-  );
-
-  previewQuote.innerHTML = '';
-
-  const text = $('#editorQuote')?.value || $('#quoteInput')?.value || '';
-
-  const paragraphs = text.split('\n');
-
-  paragraphs.forEach((paragraph, index) => {
-    const line = document.createElement('span');
-
-    line.textContent = paragraph || '\u00A0';
-    line.style.display = 'block';
-
-    if (index !== paragraphs.length - 1) {
-      line.style.marginBottom = `${settings.paragraphGap}px`;
-    }
-
-    previewQuote.appendChild(line);
-  });
-}
-
-function autoFitPreviewText() {
-  const enabled = $('#autoFit')?.checked ?? true;
-
-  const previewQuote = $('#previewQuote');
-  const quotePanel = $('#quotePanel');
-
-  if (!previewQuote || !quotePanel) return;
-
-  if (!enabled) {
-    previewQuote.style.fontSize = `${settings.size}px`;
+  if (!file.type.startsWith("video/")) {
+    alert("Silakan pilih file video yang valid.");
+    videoInput.value = "";
     return;
   }
 
-  const availableHeight = quotePanel.clientHeight * 0.75;
-
-  let fontSize = settings.size;
-
-  previewQuote.style.fontSize = `${fontSize}px`;
-
-  while (
-    previewQuote.scrollHeight > availableHeight &&
-    fontSize > 14
-  ) {
-    fontSize -= 1;
-    previewQuote.style.fontSize = `${fontSize}px`;
+  if (state.videoURL) {
+    URL.revokeObjectURL(state.videoURL);
   }
+
+  state.file = file;
+  state.videoURL = URL.createObjectURL(file);
+
+  previewVideo.src = state.videoURL;
+  previewVideo.load();
+
+  setText(videoFileName, file.name);
+  setText(videoFileSize, formatFileSize(file.size));
+
+  selectedVideo.classList.add("visible");
+  uploadButton.classList.add("has-video");
+
+  updateCharacterCount();
+});
+
+removeVideo.addEventListener("click", () => {
+  if (state.videoURL) {
+    URL.revokeObjectURL(state.videoURL);
+  }
+
+  state.file = null;
+  state.videoURL = null;
+
+  previewVideo.removeAttribute("src");
+  previewVideo.load();
+
+  videoInput.value = "";
+
+  selectedVideo.classList.remove("visible");
+  uploadButton.classList.remove("has-video");
+
+  setText(videoFileName, "Video belum dipilih");
+  setText(videoFileSize, "Pilih video dari perangkat");
+
+  updateCharacterCount();
+});
+
+previewVideo.addEventListener("error", () => {
+  if (state.file) {
+    console.warn("Video tidak dapat diputar pada pratinjau.");
+  }
+});
+
+
+/* =========================================
+   STAGE 1
+========================================= */
+
+quoteInput.addEventListener("input", () => {
+  state.text = quoteInput.value;
+  updateCharacterCount();
+});
+
+startEditing.addEventListener("click", () => {
+  if (!state.file) {
+    alert("Pilih video terlebih dahulu.");
+    return;
+  }
+
+  state.text = quoteInput.value;
+  editorQuote.value = state.text;
+
+  updateQuotePreview();
+  updateVideoAppearance();
+
+  showStage(2);
+
+  previewVideo.play().catch(() => {});
+});
+
+
+/* =========================================
+   STAGE NAVIGATION
+========================================= */
+
+backToUpload.addEventListener("click", () => {
+  showStage(1);
+  previewVideo.pause();
+});
+
+continueToExport.addEventListener("click", () => {
+  state.text = editorQuote.value;
+  updateQuotePreview();
+  updateDurationHint();
+
+  showStage(3);
+  previewVideo.pause();
+
+  clearExportMessages();
+});
+
+backToEditor.addEventListener("click", () => {
+  showStage(2);
+  previewVideo.play().catch(() => {});
+});
+
+
+/* =========================================
+   VIDEO PLAY / PAUSE
+========================================= */
+
+previewPlay.addEventListener("click", async () => {
+  if (previewVideo.paused) {
+    try {
+      await previewVideo.play();
+      setText(playIcon, "Ⅱ");
+    } catch {
+      setText(playIcon, "▶");
+    }
+  } else {
+    previewVideo.pause();
+    setText(playIcon, "▶");
+  }
+});
+
+previewVideo.addEventListener("play", () => {
+  setText(playIcon, "Ⅱ");
+});
+
+previewVideo.addEventListener("pause", () => {
+  setText(playIcon, "▶");
+});
+
+
+/* =========================================
+   TIKTOK PREVIEW UI
+========================================= */
+
+toggleTikTokUI.addEventListener("click", () => {
+  const hidden = mockTikTokUI.classList.toggle("hidden");
+
+  toggleTikTokUI.classList.toggle("active", !hidden);
+});
+
+
+/* =========================================
+   EDITOR TABS
+========================================= */
+
+$$(".tool-tab").forEach((button) => {
+  button.addEventListener("click", () => {
+    const panelName = button.dataset.panel;
+
+    $$(".tool-tab").forEach((item) => {
+      item.classList.toggle("active", item === button);
+    });
+
+    $$(".settings-panel").forEach((panel) => {
+      panel.classList.toggle(
+        "active",
+        panel.id === `panel-${panelName}`
+      );
+    });
+  });
+});
+
+
+/* =========================================
+   QUOTE TEXT
+========================================= */
+
+editorQuote.addEventListener("input", () => {
+  state.text = editorQuote.value;
+  updateQuotePreview();
+});
+
+function getTextFont() {
+  if (state.font === "bold") {
+    return `900 ${state.textSize}px ${FONT_MAP.bold}`;
+  }
+
+  return `${state.textSize}px ${FONT_MAP[state.font] || FONT_MAP.serif}`;
 }
+
+function updateQuotePreview() {
+  state.text = editorQuote.value;
+
+  previewQuote.textContent = state.text || "";
+
+  previewQuote.style.color = state.textColor;
+  previewQuote.style.fontFamily = FONT_MAP[state.font] || FONT_MAP.serif;
+
+  previewQuote.style.fontSize = `${state.textSize}px`;
+  previewQuote.style.textAlign = state.alignment;
+  previewQuote.style.fontWeight = state.font === "bold" ? "900" : "normal";
+
+  previewQuote.style.lineHeight = "1.25";
+
+  quotePanel.classList.remove(
+    "position-top",
+    "position-center",
+    "position-bottom"
+  );
+
+  quotePanel.classList.add(`position-${state.position}`);
+
+  quotePanel.style.setProperty(
+    "--quote-offset",
+    `${state.offset}%`
+  );
+
+  quotePanelInner.style.setProperty(
+    "--paragraph-gap",
+    `${state.paragraphGap}px`
+  );
+
+  quotePanelInner.classList.toggle(
+    "blur-active",
+    state.blurEnabled
+  );
+
+  quotePanelInner.style.setProperty(
+    "--quote-blur",
+    `${state.blurStrength}px`
+  );
+
+  previewQuote.style.display = state.textSize === 0 ? "none" : "block";
+
+  applyPreviewAutoFit();
+}
+
+function applyPreviewAutoFit() {
+  if (!state.autoFit || state.textSize <= 0) {
+    previewQuote.style.fontSize = `${state.textSize}px`;
+    return;
+  }
+
+  const screen = previewScreen.getBoundingClientRect();
+
+  if (!screen.width || !screen.height) return;
+
+  const maxWidth = screen.width * 0.70;
+  const maxHeight = screen.height * 0.34;
+
+  const words = state.text.split(/\s+/);
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  let size = state.textSize;
+
+  while (size > 1) {
+    context.font = `${size}px ${FONT_MAP[state.font]}`;
+
+    let lines = 1;
+    let currentLine = "";
+
+    for (const word of words) {
+      const testLine = currentLine
+        ? `${currentLine} ${word}`
+        : word;
+
+      if (context.measureText(testLine).width > maxWidth && currentLine) {
+        lines++;
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+
+    const estimatedHeight =
+      lines * size * 1.25 +
+      (state.paragraphGap * 0.7);
+
+    if (estimatedHeight <= maxHeight) break;
+
+    size--;
+  }
+
+  previewQuote.style.fontSize = `${Math.max(1, size)}px`;
+}
+
+[
+  ["textSize", "textSizeValue", (value) => {
+    state.textSize = Number(value);
+    return value;
+  }],
+  ["textOffset", "textOffsetValue", (value) => {
+    state.offset = Number(value);
+    return `${value}%`;
+  }],
+  ["paragraphGap", "paragraphGapValue", (value) => {
+    state.paragraphGap = Number(value);
+    return `${value}px`;
+  }],
+  ["blurStrength", "blurStrengthValue", (value) => {
+    state.blurStrength = Number(value);
+    return value;
+  }]
+].forEach(([inputId, outputId, update]) => {
+  const input = $(`#${inputId}`);
+  const output = $(`#${outputId}`);
+
+  input.addEventListener("input", () => {
+    const displayValue = update(input.value);
+    setText(output, displayValue);
+    updateQuotePreview();
+  });
+});
 
 
 /* =========================================
    TEXT COLOR
 ========================================= */
 
-$('#textColor')?.addEventListener('change', () => {
-  const color = $('#textColor').value;
-
-  $('#customTextColor').value = color;
-  settings.color = color;
-
-  updatePreviewText();
+textColor.addEventListener("change", () => {
+  state.textColor = textColor.value;
+  customTextColor.value = textColor.value;
+  updateQuotePreview();
 });
 
-$('#customTextColor')?.addEventListener('input', () => {
-  settings.color = $('#customTextColor').value;
-
-  updatePreviewText();
-});
-
-
-/* =========================================
-   TEXT SIZE
-========================================= */
-
-$('#textSize')?.addEventListener('input', () => {
-  settings.size = Number($('#textSize').value);
-
-  $('#textSizeValue').textContent = settings.size;
-
-  updatePreviewText();
+customTextColor.addEventListener("input", () => {
+  state.textColor = customTextColor.value;
+  textColor.value = customTextColor.value;
+  updateQuotePreview();
 });
 
 
@@ -365,44 +535,27 @@ $('#textSize')?.addEventListener('input', () => {
    TEXT POSITION
 ========================================= */
 
-$$('.position-button').forEach((button) => {
-  button.addEventListener('click', () => {
-    $$('.position-button').forEach((item) => {
-      item.classList.remove('active');
+$$(".position-button").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.position = button.dataset.position;
+
+    $$(".position-button").forEach((item) => {
+      item.classList.toggle("active", item === button);
     });
 
-    button.classList.add('active');
-
-    settings.position = button.dataset.position;
-
-    updatePreviewText();
+    updateQuotePreview();
   });
 });
 
-$('#textOffset')?.addEventListener('input', () => {
-  settings.offset = Number($('#textOffset').value);
+$$(".align-button").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.alignment = button.dataset.align;
 
-  $('#textOffsetValue').textContent = settings.offset;
-
-  updatePreviewText();
-});
-
-
-/* =========================================
-   TEXT ALIGNMENT
-========================================= */
-
-$$('.align-button').forEach((button) => {
-  button.addEventListener('click', () => {
-    $$('.align-button').forEach((item) => {
-      item.classList.remove('active');
+    $$(".align-button").forEach((item) => {
+      item.classList.toggle("active", item === button);
     });
 
-    button.classList.add('active');
-
-    settings.alignment = button.dataset.align;
-
-    updatePreviewText();
+    updateQuotePreview();
   });
 });
 
@@ -411,40 +564,19 @@ $$('.align-button').forEach((button) => {
    AUTO FIT
 ========================================= */
 
-$('#autoFit')?.addEventListener('change', () => {
-  updatePreviewText();
+autoFit.addEventListener("change", () => {
+  state.autoFit = autoFit.checked;
+  updateQuotePreview();
 });
 
 
 /* =========================================
-   PARAGRAPH GAP
+   BLUR
 ========================================= */
 
-$('#paragraphGap')?.addEventListener('input', () => {
-  settings.paragraphGap = Number($('#paragraphGap').value);
-
-  $('#paragraphGapValue').textContent = settings.paragraphGap;
-
-  updatePreviewText();
-});
-
-
-/* =========================================
-   BLUR SETTINGS
-========================================= */
-
-$('#blurEnabled')?.addEventListener('change', () => {
-  settings.blur = $('#blurEnabled').checked;
-
-  updatePreviewText();
-});
-
-$('#blurStrength')?.addEventListener('input', () => {
-  settings.blurStrength = Number($('#blurStrength').value);
-
-  $('#blurStrengthValue').textContent = settings.blurStrength;
-
-  updatePreviewText();
+blurEnabled.addEventListener("change", () => {
+  state.blurEnabled = blurEnabled.checked;
+  updateQuotePreview();
 });
 
 
@@ -452,252 +584,212 @@ $('#blurStrength')?.addEventListener('input', () => {
    FONT SELECTION
 ========================================= */
 
-$$('.font-option').forEach((button) => {
-  button.addEventListener('click', () => {
-    $$('.font-option').forEach((item) => {
-      item.classList.remove('active');
+$$(".font-option").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.font = button.dataset.font;
+
+    $$(".font-option").forEach((item) => {
+      item.classList.toggle("active", item === button);
     });
 
-    button.classList.add('active');
-
-    settings.font = button.dataset.font;
-
-    updatePreviewText();
+    updateQuotePreview();
   });
 });
 
 
 /* =========================================
-   FILTERS
+   FILTER SELECTION
 ========================================= */
 
-const filterStyles = {
-  normal: 'none',
-  cinematic: 'contrast(1.15) saturate(0.85) brightness(0.92)',
-  blue: 'saturate(0.9) hue-rotate(12deg) contrast(1.08)',
-  warm: 'sepia(0.2) saturate(1.15) brightness(1.04)',
-  mono: 'grayscale(1) contrast(1.12)',
-  soft: 'contrast(0.88) saturate(0.85) brightness(1.08)',
-  deep: 'contrast(1.28) saturate(1.08) brightness(0.88)',
-  golden: 'sepia(0.32) saturate(1.25) contrast(1.05)',
-  night: 'brightness(0.72) contrast(1.2) saturate(0.8)'
-};
+$$(".filter-option").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.filter = button.dataset.filter;
 
-const filterValues = {
-  normal: null,
-  cinematic: 'eq=contrast=1.15:saturation=0.85:brightness=-0.04',
-  blue: 'colorbalance=bs=0.08:rs=-0.03,eq=contrast=1.08:saturation=0.9',
-  warm: 'colorbalance=rs=0.08:gs=0.02:bs=-0.08,eq=saturation=1.15:brightness=0.02',
-  mono: 'hue=s=0,eq=contrast=1.12',
-  soft: 'eq=contrast=0.88:saturation=0.85:brightness=0.03',
-  deep: 'eq=contrast=1.28:saturation=1.08:brightness=-0.06',
-  golden: 'colorbalance=rs=0.12:gs=0.04:bs=-0.12,eq=saturation=1.2',
-  night: 'eq=brightness=-0.1:contrast=1.2:saturation=0.8'
-};
-
-$$('.filter-option').forEach((button) => {
-  button.addEventListener('click', () => {
-    $$('.filter-option').forEach((item) => {
-      item.classList.remove('active');
+    $$(".filter-option").forEach((item) => {
+      item.classList.toggle("active", item === button);
     });
 
-    button.classList.add('active');
-
-    settings.filter = button.dataset.filter;
-
-    updateVideoFilter();
+    updateVideoAppearance();
   });
 });
-
-function updateVideoFilter() {
-  if (!previewVideo) return;
-
-  const filter = filterStyles[settings.filter] || 'none';
-
-  const brightness = settings.brightness / 100;
-  const contrast = settings.contrast / 100;
-  const saturation = settings.saturation / 100;
-
-  const adjustment = `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`;
-
-  const temperature = settings.temperature;
-
-  previewVideo.style.filter =
-    `${filter} ${adjustment} sepia(${Math.max(0, temperature) / 250})`;
-
-  previewVideo.style.webkitFilter = previewVideo.style.filter;
-}
 
 
 /* =========================================
    IMAGE ADJUSTMENTS
 ========================================= */
 
+function updateVideoAppearance() {
+  const filter = FILTER_PREVIEW[state.filter] || "";
+
+  const adjustment = [
+    `brightness(${state.brightness}%)`,
+    `contrast(${state.contrast}%)`,
+    `saturate(${state.saturation}%)`,
+    filter
+  ].filter(Boolean).join(" ");
+
+  previewVideo.style.filter = adjustment;
+}
+
 const adjustmentControls = [
-  ['brightness', 'brightnessValue', '%'],
-  ['contrast', 'contrastValue', '%'],
-  ['saturation', 'saturationValue', '%'],
-  ['temperature', 'temperatureValue', '']
+  ["brightness", "brightnessValue", "brightness", "%"],
+  ["contrast", "contrastValue", "contrast", "%"],
+  ["saturation", "saturationValue", "saturation", "%"],
+  ["temperature", "temperatureValue", "temperature", ""]
 ];
 
-adjustmentControls.forEach(([id, output, suffix]) => {
+adjustmentControls.forEach(([id, outputId, key, suffix]) => {
   const input = $(`#${id}`);
+  const output = $(`#${outputId}`);
 
-  input?.addEventListener('input', () => {
-    settings[id] = Number(input.value);
+  input.addEventListener("input", () => {
+    state[key] = Number(input.value);
 
-    $(`#${output}`).textContent = `${input.value}${suffix}`;
-
-    updateVideoFilter();
+    setText(output, `${input.value}${suffix}`);
+    updateVideoAppearance();
   });
 });
 
-$('#autoAdjust')?.addEventListener('click', () => {
-  settings.brightness = 105;
-  settings.contrast = 108;
-  settings.saturation = 108;
-  settings.temperature = 8;
+$("#autoAdjust").addEventListener("click", () => {
+  state.brightness = 105;
+  state.contrast = 108;
+  state.saturation = 106;
+  state.temperature = 5;
 
-  setAdjustmentInputs();
+  $("#brightness").value = 105;
+  $("#contrast").value = 108;
+  $("#saturation").value = 106;
+  $("#temperature").value = 5;
 
-  updateVideoFilter();
+  setText($("#brightnessValue"), "105%");
+  setText($("#contrastValue"), "108%");
+  setText($("#saturationValue"), "106%");
+  setText($("#temperatureValue"), "5");
+
+  updateVideoAppearance();
 });
 
-$('#resetAdjustments')?.addEventListener('click', () => {
-  settings.brightness = 100;
-  settings.contrast = 100;
-  settings.saturation = 100;
-  settings.temperature = 0;
+$("#resetAdjustments").addEventListener("click", () => {
+  state.brightness = 100;
+  state.contrast = 100;
+  state.saturation = 100;
+  state.temperature = 0;
+  state.filter = "normal";
 
-  settings.filter = 'normal';
+  $("#brightness").value = 100;
+  $("#contrast").value = 100;
+  $("#saturation").value = 100;
+  $("#temperature").value = 0;
 
-  setAdjustmentInputs();
+  setText($("#brightnessValue"), "100%");
+  setText($("#contrastValue"), "100%");
+  setText($("#saturationValue"), "100%");
+  setText($("#temperatureValue"), "0");
 
-  $$('.filter-option').forEach((item) => {
-    item.classList.toggle(
-      'active',
-      item.dataset.filter === 'normal'
+  $$(".filter-option").forEach((button) => {
+    button.classList.toggle(
+      "active",
+      button.dataset.filter === "normal"
     );
   });
 
-  updateVideoFilter();
+  updateVideoAppearance();
 });
 
-function setAdjustmentInputs() {
-  adjustmentControls.forEach(([id, output, suffix]) => {
-    const input = $(`#${id}`);
 
-    if (!input) return;
+/* =========================================
+   EXPORT DURATION
+========================================= */
 
-    input.value = settings[id];
+$$("[data-duration]").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.duration = Number(button.dataset.duration);
 
-    $(`#${output}`).textContent = `${settings[id]}${suffix}`;
+    $$("[data-duration]").forEach((item) => {
+      item.classList.toggle("active", item === button);
+    });
+
+    updateDurationHint();
   });
+});
+
+function updateDurationHint() {
+  if (!state.file) return;
+
+  const video = document.createElement("video");
+  const url = URL.createObjectURL(state.file);
+
+  video.preload = "metadata";
+  video.src = url;
+
+  video.onloadedmetadata = () => {
+    const actualDuration = video.duration;
+
+    if (Number.isFinite(actualDuration) && actualDuration < state.duration) {
+      durationHint.textContent =
+        `Video asli ${actualDuration.toFixed(1)} detik. Durasi hasil akan mengikuti video asli.`;
+    } else {
+      durationHint.textContent =
+        `Video akan dipotong otomatis menjadi maksimal ${state.duration} detik.`;
+    }
+
+    URL.revokeObjectURL(url);
+  };
+
+  video.onerror = () => {
+    durationHint.textContent =
+      `Durasi hasil maksimal ${state.duration} detik.`;
+
+    URL.revokeObjectURL(url);
+  };
 }
 
+resolution.addEventListener("change", () => {
+  state.resolution = Number(resolution.value);
+});
+
 
 /* =========================================
-   EDITOR TOOLBAR
+   EXPORT AUDIO OPTION
 ========================================= */
 
-$$('.tool-tab').forEach((button) => {
-  button.addEventListener('click', () => {
-    const panelName = button.dataset.panel;
-
-    $$('.tool-tab').forEach((item) => {
-      item.classList.remove('active');
+$$('input[name="audioMode"]').forEach((radio) => {
+  radio.addEventListener("change", () => {
+    $$(".audio-option").forEach((option) => {
+      option.classList.toggle(
+        "active",
+        option.querySelector("input").checked
+      );
     });
-
-    $$('.settings-panel').forEach((panel) => {
-      panel.classList.remove('active');
-    });
-
-    button.classList.add('active');
-
-    const panel = $(`#panel-${panelName}`);
-
-    panel?.classList.add('active');
   });
 });
 
 
 /* =========================================
-   TIKTOK PREVIEW UI
+   TEXT CANVAS
 ========================================= */
 
-$('#toggleTikTokUI')?.addEventListener('click', () => {
-  const screen = $('#previewScreen');
-
-  const hidden = screen.classList.toggle('hide-tiktok-ui');
-
-  $('#toggleTikTokUI').classList.toggle('active', !hidden);
-});
-
-
-/* =========================================
-   VIDEO PLAY / PAUSE
-========================================= */
-
-$('#previewPlay')?.addEventListener('click', () => {
-  if (!previewVideo.src) return;
-
-  if (previewVideo.paused) {
-    previewVideo.play().catch(() => {});
-  } else {
-    previewVideo.pause();
-  }
-});
-
-previewVideo?.addEventListener('play', () => {
-  $('#playIcon').textContent = 'Ⅱ';
-});
-
-previewVideo?.addEventListener('pause', () => {
-  $('#playIcon').textContent = '▶';
-});
-
-
-/* =========================================
-   EXPANDED PREVIEW
-========================================= */
-
-$('#previewScreen')?.addEventListener('dblclick', () => {
-  if (!document.fullscreenElement) {
-    $('#previewScreen').requestFullscreen?.().catch(() => {});
-  } else {
-    document.exitFullscreen?.();
-  }
-});
-
-
-/* =========================================
-   CANVAS TEXT RENDERING
-========================================= */
-
-function wrapCanvasText(context, text, maxWidth) {
-  const paragraphs = text.split('\n');
+function wrapText(context, text, maxWidth) {
+  const paragraphs = text.split("\n");
   const lines = [];
 
   paragraphs.forEach((paragraph) => {
     if (!paragraph.trim()) {
-      lines.push('');
+      lines.push("");
       return;
     }
 
     const words = paragraph.split(/\s+/);
-    let line = '';
+    let line = "";
 
     words.forEach((word) => {
-      const testLine = line ? `${line} ${word}` : word;
+      const test = line ? `${line} ${word}` : word;
 
-      if (
-        context.measureText(testLine).width > maxWidth &&
-        line
-      ) {
+      if (context.measureText(test).width > maxWidth && line) {
         lines.push(line);
         line = word;
       } else {
-        line = testLine;
+        line = test;
       }
     });
 
@@ -708,123 +800,166 @@ function wrapCanvasText(context, text, maxWidth) {
 }
 
 function createTextOverlay(width, height) {
-  const canvas = document.createElement('canvas');
+  const canvas = document.createElement("canvas");
 
   canvas.width = width;
   canvas.height = height;
 
-  const context = canvas.getContext('2d');
+  const context = canvas.getContext("2d");
 
-  const quote = $('#editorQuote').value || $('#quoteInput').value || '';
+  context.clearRect(0, 0, width, height);
 
-  const boxWidth = width * 0.68;
-  const centerX = width / 2;
+  if (!state.text.trim() || state.textSize === 0) {
+    return canvas;
+  }
 
-  const fontSize = Math.round(settings.size * (width / 390));
+  const safeWidth = width * 0.76;
+  const safeHeight = height * 0.36;
 
-  const fontFamilies = {
-    serif: 'Georgia',
-    clean: 'Arial',
-    bold: 'Arial',
-    soft: 'Trebuchet MS',
-    classic: 'Palatino',
-    modern: 'Verdana',
-    typewriter: 'Courier New',
-    editorial: 'Baskerville'
-  };
+  let fontSize = state.textSize;
+  let lines = [];
 
-  const family = fontFamilies[settings.font] || 'Georgia';
+  function calculateLines(size) {
+    context.font =
+      `${state.font === "bold" ? "900 " : ""}${size}px ${FONT_MAP[state.font]}`;
 
-  const fontWeight = settings.font === 'bold' ? 'bold' : 'normal';
+    return wrapText(context, state.text, safeWidth);
+  }
 
-  context.font = `${fontWeight} ${fontSize}px "${family}"`;
+  lines = calculateLines(fontSize);
 
-  context.textBaseline = 'top';
+  if (state.autoFit) {
+    while (fontSize > 1) {
+      lines = calculateLines(fontSize);
 
-  const lines = wrapCanvasText(
-    context,
-    quote,
-    boxWidth
-  );
+      const lineHeight = fontSize * 1.25;
+      const paragraphCount = state.text.split("\n").length;
+      const estimatedHeight =
+        lines.length * lineHeight +
+        Math.max(0, paragraphCount - 1) *
+        (state.paragraphGap * height / 1920);
 
-  const lineHeight = fontSize * 1.28;
-  const paragraphGap = settings.paragraphGap * (width / 390);
+      if (estimatedHeight <= safeHeight) break;
+
+      fontSize--;
+    }
+  }
+
+  context.font =
+    `${state.font === "bold" ? "900 " : ""}${fontSize}px ${FONT_MAP[state.font]}`;
+
+  context.textAlign = state.alignment;
+  context.textBaseline = "middle";
+  context.fillStyle = state.textColor;
+
+  context.shadowColor = "rgba(0,0,0,0.38)";
+  context.shadowBlur = fontSize * 0.12;
+  context.shadowOffsetX = 0;
+  context.shadowOffsetY = fontSize * 0.04;
+
+  const lineHeight = fontSize * 1.25;
+  const paragraphSpacing = state.paragraphGap * height / 1920;
+
+  const paragraphLines = [];
+  let currentParagraph = 0;
+
+  state.text.split("\n").forEach((paragraph) => {
+    const paragraphWrapped = wrapText(
+      context,
+      paragraph,
+      safeWidth
+    );
+
+    paragraphLines.push({
+      lines: paragraphWrapped.length ? paragraphWrapped : [""],
+      paragraph: currentParagraph++
+    });
+  });
 
   let totalHeight = 0;
 
-  lines.forEach((line, index) => {
-    totalHeight += lineHeight;
-
-    if (line === '') {
-      totalHeight += paragraphGap;
-    }
+  paragraphLines.forEach((item) => {
+    totalHeight += item.lines.length * lineHeight;
   });
 
-  const padding = settings.blur ? width * 0.035 : 0;
-
-  const panelHeight = totalHeight + padding * 2;
+  totalHeight += Math.max(0, paragraphLines.length - 1) * paragraphSpacing;
 
   let centerY;
 
-  if (settings.position === 'top') {
-    centerY = height * 0.27;
-  } else if (settings.position === 'bottom') {
-    centerY = height * 0.70;
+  if (state.position === "top") {
+    centerY = height * 0.28;
+  } else if (state.position === "bottom") {
+    centerY = height * 0.68;
   } else {
     centerY = height * 0.50;
   }
 
-  centerY += (settings.offset / 100) * height;
+  centerY += (state.offset / 100) * height * 0.35;
 
-  const safeTop = height * 0.14;
-  const safeBottom = height * 0.83;
+  let y = centerY - totalHeight / 2 + lineHeight / 2;
 
-  centerY = Math.max(
-    safeTop + panelHeight / 2,
-    Math.min(safeBottom - panelHeight / 2, centerY)
-  );
+  const x = state.alignment === "left"
+    ? width * 0.12
+    : state.alignment === "right"
+      ? width * 0.88
+      : width * 0.50;
 
-  const panelX = Math.round(centerX - boxWidth / 2 - padding);
-  const panelY = Math.round(centerY - panelHeight / 2);
+  /* Background lembut di belakang teks.
+     Blur CSS preview tidak dapat diekspor identik,
+     jadi ekspor memakai lapisan transparan. */
 
-  const panelWidth = Math.round(boxWidth + padding * 2);
-  const finalPanelHeight = Math.round(panelHeight);
+  if (state.blurEnabled) {
+    const paddingX = fontSize * 0.55;
+    const paddingY = fontSize * 0.32;
 
-  context.fillStyle = settings.color;
+    const boxWidth = Math.min(
+      safeWidth + paddingX * 2,
+      width * 0.86
+    );
 
-  context.font = `${fontWeight} ${fontSize}px "${family}"`;
+    const boxHeight = totalHeight + paddingY * 2;
 
-  let y = panelY + padding;
+    const boxX = state.alignment === "left"
+      ? width * 0.12 - paddingX
+      : state.alignment === "right"
+        ? width * 0.88 - boxWidth + paddingX
+        : width * 0.50 - boxWidth / 2;
 
-  lines.forEach((line, index) => {
-    if (line === '') {
-      y += lineHeight + paragraphGap;
-      return;
+    const boxY = centerY - boxHeight / 2;
+
+    context.save();
+    context.shadowColor = "transparent";
+    context.fillStyle = `rgba(0,0,0,${clamp(state.blurStrength / 60, 0.03, 0.35)})`;
+
+    const radius = fontSize * 0.35;
+
+    context.beginPath();
+    context.roundRect(
+      boxX,
+      boxY,
+      boxWidth,
+      boxHeight,
+      radius
+    );
+    context.fill();
+    context.restore();
+  }
+
+  context.shadowColor = "rgba(0,0,0,0.38)";
+  context.shadowBlur = fontSize * 0.12;
+
+  paragraphLines.forEach((paragraph, index) => {
+    paragraph.lines.forEach((line) => {
+      context.fillText(line, x, y);
+      y += lineHeight;
+    });
+
+    if (index < paragraphLines.length - 1) {
+      y += paragraphSpacing;
     }
-
-    context.textAlign = settings.alignment;
-
-    let x = centerX;
-
-    if (settings.alignment === 'left') {
-      x = panelX + padding;
-    } else if (settings.alignment === 'right') {
-      x = panelX + panelWidth - padding;
-    }
-
-    context.fillText(line, x, y, boxWidth);
-
-    y += lineHeight;
   });
 
-  return {
-    canvas,
-    panelX,
-    panelY,
-    panelWidth,
-    panelHeight: finalPanelHeight,
-    centerY
-  };
+  return canvas;
 }
 
 
@@ -833,137 +968,199 @@ function createTextOverlay(width, height) {
 ========================================= */
 
 async function loadFFmpeg() {
-  if (ffmpegReady) return;
+  if (state.ffmpegReady) return;
 
-  if (!ffmpeg) {
-    ffmpeg = new FFmpeg();
-
-    ffmpeg.on('progress', ({ progress }) => {
-      const percentage = Math.max(
-        0,
-        Math.min(100, Math.round(progress * 100))
-      );
-
-      $('#progressPercent').textContent = `${percentage}%`;
-      $('#progressBar').style.width = `${percentage}%`;
-    });
-
-    ffmpeg.on('log', ({ message }) => {
-      console.log('[QuietFrame FFmpeg]', message);
-    });
+  if (!state.ffmpeg) {
+    state.ffmpeg = new FFmpeg();
   }
 
-  $('#progressLabel').textContent = 'Memuat mesin video...';
+  const ffmpeg = state.ffmpeg;
 
-  const baseURL =
-    'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
+  ffmpeg.on("progress", ({ progress }) => {
+    if (!state.exporting) return;
 
-  const coreURL = await toBlobURL(
-    `${baseURL}/ffmpeg-core.js`,
-    'text/javascript'
-  );
+    const percent = clamp(
+      Math.round(progress * 100),
+      0,
+      99
+    );
 
-  const wasmURL = await toBlobURL(
-    `${baseURL}/ffmpeg-core.wasm`,
-    'application/wasm'
-  );
-
-  await ffmpeg.load({
-    coreURL,
-    wasmURL
+    setText(progressPercent, `${percent}%`);
+    progressBar.style.width = `${percent}%`;
   });
 
-  ffmpegReady = true;
+  ffmpeg.on("log", ({ message }) => {
+    console.log("[QuietFrame FFmpeg]", message);
+  });
+
+  const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
+
+  await ffmpeg.load({
+    coreURL: await toBlobURL(
+      `${baseURL}/ffmpeg-core.js`,
+      "text/javascript"
+    ),
+    wasmURL: await toBlobURL(
+      `${baseURL}/ffmpeg-core.wasm`,
+      "application/wasm"
+    )
+  });
+
+  state.ffmpegReady = true;
 }
 
 
 /* =========================================
-   EXPORT FILTERS
+   EXPORT HELPERS
 ========================================= */
 
-function buildVideoFilter() {
+function getVideoDimensions() {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    const url = URL.createObjectURL(state.file);
+
+    video.preload = "metadata";
+    video.src = url;
+
+    video.onloadedmetadata = () => {
+      const width = video.videoWidth || 1080;
+      const height = video.videoHeight || 1920;
+
+      URL.revokeObjectURL(url);
+
+      resolve({ width, height });
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Tidak dapat membaca ukuran video."));
+    };
+  });
+}
+
+function getOutputDimensions(sourceWidth, sourceHeight) {
+  const targetHeight = state.resolution;
+
+  const ratio = sourceWidth / sourceHeight;
+
+  let width = Math.round(targetHeight * ratio);
+
+  width = Math.max(2, width - (width % 2));
+
+  return {
+    width,
+    height: targetHeight
+  };
+}
+
+function getFFmpegVideoFilter() {
   const filters = [];
 
-  const filter = filterValues[settings.filter];
-
-  if (filter) {
-    filters.push(filter);
-  }
-
-  const brightness = (settings.brightness - 100) / 100;
-
   filters.push(
-    `eq=brightness=${brightness.toFixed(3)}:contrast=${(settings.contrast / 100).toFixed(2)}:saturation=${(settings.saturation / 100).toFixed(2)}`
+    `scale=${state.resolution === 1080 ? "1080" : "720"}:-2`
   );
 
-  if (settings.temperature !== 0) {
-    const amount = settings.temperature / 100;
+  if (state.filter !== "normal" && FILTER_MAP[state.filter]) {
+    filters.push(FILTER_MAP[state.filter]);
+  }
+
+  const brightness = (state.brightness - 100) / 100;
+  const contrast = state.contrast / 100;
+  const saturation = state.saturation / 100;
+
+  filters.push(
+    `eq=brightness=${brightness}:contrast=${contrast}:saturation=${saturation}`
+  );
+
+  if (state.temperature !== 0) {
+    const amount = state.temperature / 100;
 
     filters.push(
-      `colorbalance=rs=${amount.toFixed(2)}:bs=${(-amount).toFixed(2)}`
+      `colorbalance=rs=${amount}:bs=${-amount}`
     );
   }
 
-  return filters.join(',');
+  return filters.join(",");
+}
+
+function updateProgress(percent, label) {
+  setText(progressPercent, `${percent}%`);
+  setText(progressLabel, label);
+  progressBar.style.width = `${percent}%`;
 }
 
 
 /* =========================================
-   EXPORT VIDEO
+   MAIN EXPORT PROCESS
 ========================================= */
 
-$('#exportButton')?.addEventListener('click', async () => {
-  if (exporting) return;
-
-  if (!uploadedFile) {
-    alert('Video belum dipilih.');
+async function exportVideo() {
+  if (!state.file) {
+    showError("Pilih video terlebih dahulu.");
     return;
   }
 
-  exporting = true;
+  if (state.exporting) return;
 
-  const exportButton = $('#exportButton');
+  state.exporting = true;
 
   exportButton.disabled = true;
-  exportButton.querySelector('span').textContent = 'Memproses...';
+  exportButton.classList.add("loading");
 
-  $('#exportError').textContent = '';
-  $('#exportResult').classList.remove('visible');
-  $('#exportProgress').classList.add('visible');
+  clearExportMessages();
 
-  $('#progressBar').style.width = '0%';
-  $('#progressPercent').textContent = '0%';
+  exportProgress.classList.add("visible");
+
+  updateProgress(0, "Menyiapkan video...");
 
   try {
     await loadFFmpeg();
 
-    $('#progressLabel').textContent = 'Membaca video...';
+    updateProgress(8, "Membaca video...");
 
-    const inputName = 'quietframe-input.mp4';
-    const outputName = 'quietframe-output.mp4';
-    const overlayName = 'quietframe-text.png';
+    const ffmpeg = state.ffmpeg;
+
+    const inputName = "quietframe-input";
+    const overlayName = "quietframe-overlay.png";
+    const outputName = "quietframe-output.mp4";
+
+    try {
+      await ffmpeg.deleteFile(inputName);
+    } catch {}
+
+    try {
+      await ffmpeg.deleteFile(overlayName);
+    } catch {}
+
+    try {
+      await ffmpeg.deleteFile(outputName);
+    } catch {}
 
     await ffmpeg.writeFile(
       inputName,
-      await fetchFile(uploadedFile)
+      await fetchFile(state.file)
     );
 
-    const resolution = Number($('#resolution').value || 1080);
+    updateProgress(20, "Menyiapkan teks...");
 
-    const outputWidth = resolution === 720 ? 720 : 1080;
-    const outputHeight = Math.round(outputWidth * 16 / 9);
+    const dimensions = await getVideoDimensions();
 
-    const overlay = createTextOverlay(
-      outputWidth,
-      outputHeight
+    const outputDimensions = getOutputDimensions(
+      dimensions.width,
+      dimensions.height
+    );
+
+    const overlayCanvas = createTextOverlay(
+      outputDimensions.width,
+      outputDimensions.height
     );
 
     const overlayBlob = await new Promise((resolve) => {
-      overlay.canvas.toBlob(resolve, 'image/png');
+      overlayCanvas.toBlob(resolve, "image/png");
     });
 
     if (!overlayBlob) {
-      throw new Error('Gagal membuat gambar teks.');
+      throw new Error("Gagal membuat lapisan teks.");
     }
 
     await ffmpeg.writeFile(
@@ -971,175 +1168,165 @@ $('#exportButton')?.addEventListener('click', async () => {
       await fetchFile(overlayBlob)
     );
 
-    $('#progressLabel').textContent = 'Menyusun video...';
+    updateProgress(30, "Memproses video...");
 
-    const videoFilter = buildVideoFilter();
+    const selectedAudio =
+      $('input[name="audioMode"]:checked')?.value || "original";
 
-    const scaleFilter =
-      `scale=${outputWidth}:${outputHeight}:force_original_aspect_ratio=increase,crop=${outputWidth}:${outputHeight},setsar=1`;
+    const videoFilter = getFFmpegVideoFilter();
 
-    const baseFilter = `${scaleFilter},${videoFilter}`;
+    const command = [
+      "-i", inputName,
+      "-i", overlayName,
 
-    const args = [
-      '-i', inputName,
-      '-i', overlayName
+      "-filter_complex",
+      `[0:v]${videoFilter}[base];[base][1:v]overlay=0:0:format=auto[vout]`,
+
+      "-map", "[vout]"
     ];
 
-    if (settings.blur && settings.blurStrength > 0) {
-      const x = Math.max(0, Math.round(overlay.panelX));
-      const y = Math.max(0, Math.round(overlay.panelY));
-
-      const w = Math.min(
-        outputWidth - x,
-        Math.round(overlay.panelWidth)
-      );
-
-      const h = Math.min(
-        outputHeight - y,
-        Math.round(overlay.panelHeight)
-      );
-
-      const blurAmount = Math.max(
-        2,
-        Math.round(settings.blurStrength / 2)
-      );
-
-      const complexFilter =
-        `[0:v]${baseFilter},split=2[base][blurinput];` +
-        `[blurinput]crop=${w}:${h}:${x}:${y},boxblur=${blurAmount}:1[blurred];` +
-        `[base][blurred]overlay=${x}:${y}[clean];` +
-        `[clean][1:v]overlay=0:0[outv]`;
-
-      args.push(
-        '-filter_complex',
-        complexFilter,
-        '-map',
-        '[outv]'
-      );
+    if (selectedAudio === "original") {
+      command.push("-map", "0:a?");
+      command.push("-c:a", "aac");
+      command.push("-b:a", "128k");
     } else {
-      args.push(
-        '-filter_complex',
-        `[0:v]${baseFilter}[base];[base][1:v]overlay=0:0[outv]`,
-        '-map',
-        '[outv]'
-      );
+      command.push("-an");
     }
 
-    const audioMode =
-      $('input[name="audioMode"]:checked')?.value || 'original';
-
-    if (audioMode === 'original') {
-      args.push(
-        '-map', '0:a?',
-        '-c:a', 'aac',
-        '-b:a', '192k'
-      );
-    } else {
-      args.push('-an');
-    }
-
-    args.push(
-      '-c:v', 'libx264',
-      '-preset', 'ultrafast',
-      '-crf', '20',
-      '-pix_fmt', 'yuv420p',
-      '-movflags', '+faststart',
-      '-shortest',
+    command.push(
+      "-c:v", "libx264",
+      "-preset", "ultrafast",
+      "-crf", "23",
+      "-pix_fmt", "yuv420p",
+      "-r", "30",
+      "-t", String(state.duration),
+      "-shortest",
+      "-movflags", "+faststart",
       outputName
     );
 
-    await ffmpeg.exec(args);
+    updateProgress(40, "Merender video...");
 
-    $('#progressLabel').textContent = 'Menyiapkan hasil video...';
+    const exitCode = await ffmpeg.exec(command);
+
+    if (exitCode !== 0) {
+      throw new Error("Proses FFmpeg gagal. Coba gunakan video lain.");
+    }
+
+    updateProgress(94, "Menyiapkan hasil...");
 
     const outputData = await ffmpeg.readFile(outputName);
 
     const outputBlob = new Blob(
       [outputData.buffer],
-      { type: 'video/mp4' }
+      { type: "video/mp4" }
     );
 
-    if (exportedURL) {
-      URL.revokeObjectURL(exportedURL);
+    if (state.outputURL) {
+      URL.revokeObjectURL(state.outputURL);
     }
 
-    exportedURL = URL.createObjectURL(outputBlob);
+    state.outputURL = URL.createObjectURL(outputBlob);
 
-    $('#downloadButton').href = exportedURL;
-    $('#downloadButton').download = 'quietframe-video.mp4';
+    downloadButton.href = state.outputURL;
+    downloadButton.download = "quietframe-video.mp4";
 
-    $('#progressBar').style.width = '100%';
-    $('#progressPercent').textContent = '100%';
+    updateProgress(100, "Video selesai dibuat.");
 
-    $('#progressLabel').textContent = 'Selesai';
+    exportResult.classList.add("visible");
+    downloadButton.classList.add("visible");
 
-    $('#exportResult').classList.add('visible');
-    $('#downloadButton').classList.add('visible');
+    setText(
+      progressLabel,
+      "Ekspor berhasil"
+    );
+
+    try {
+      await ffmpeg.deleteFile(inputName);
+      await ffmpeg.deleteFile(overlayName);
+      await ffmpeg.deleteFile(outputName);
+    } catch {}
 
   } catch (error) {
-    console.error('QuietFrame export error:', error);
+    console.error("QuietFrame export error:", error);
 
-    $('#exportError').textContent =
-      `Gagal memproses video: ${error.message || 'Terjadi kesalahan.'}`;
+    showError(
+      `Gagal memproses video: ${error.message || "Terjadi kesalahan."}`
+    );
 
-    $('#progressLabel').textContent = 'Ekspor gagal';
+    setText(progressLabel, "Ekspor gagal");
 
   } finally {
-    exporting = false;
+    state.exporting = false;
 
     exportButton.disabled = false;
-    exportButton.querySelector('span').textContent = 'Ekspor Video';
+    exportButton.classList.remove("loading");
+  }
+}
+
+
+/* =========================================
+   EXPORT BUTTON
+========================================= */
+
+exportButton.addEventListener("click", exportVideo);
+
+
+/* =========================================
+   DOWNLOAD RESULT
+========================================= */
+
+downloadButton.addEventListener("click", (event) => {
+  if (!state.outputURL) {
+    event.preventDefault();
+    showError("Video belum berhasil dibuat.");
   }
 });
 
 
 /* =========================================
-   AUDIO OPTION VISUAL STATE
+   RESPONSIVE PREVIEW
 ========================================= */
 
-$$('.audio-option').forEach((option) => {
-  option.addEventListener('click', () => {
-    $$('.audio-option').forEach((item) => {
-      item.classList.remove('active');
-    });
-
-    option.classList.add('active');
-
-    const radio = option.querySelector('input[type="radio"]');
-
-    if (radio) radio.checked = true;
+if ("ResizeObserver" in window) {
+  const resizeObserver = new ResizeObserver(() => {
+    if (state.stage === 2) {
+      applyPreviewAutoFit();
+    }
   });
-});
 
-
-/* =========================================
-   EXPORT CLEANUP
-========================================= */
-
-window.addEventListener('beforeunload', () => {
-  if (videoURL) {
-    URL.revokeObjectURL(videoURL);
-  }
-
-  if (exportedURL) {
-    URL.revokeObjectURL(exportedURL);
-  }
-});
+  resizeObserver.observe(previewScreen);
+} else {
+  window.addEventListener("resize", () => {
+    applyPreviewAutoFit();
+  });
+}
 
 
 /* =========================================
    INITIALIZATION
 ========================================= */
 
-function initializeQuietFrame() {
-  $('#startEditing').disabled = true;
-
-  $('#characterCount').textContent = '0/500';
-
-  updatePreviewText();
-  updateVideoFilter();
-
+function initialize() {
   showStage(1);
+
+  updateCharacterCount();
+  updateQuotePreview();
+  updateVideoAppearance();
+
+  setText(textSizeValue, state.textSize);
+  setText(textOffsetValue, "0");
+  setText(paragraphGapValue, `${state.paragraphGap}px`);
+  setText(blurStrengthValue, state.blurStrength);
+
+  setText($("#brightnessValue"), "100%");
+  setText($("#contrastValue"), "100%");
+  setText($("#saturationValue"), "100%");
+  setText($("#temperatureValue"), "0");
+
+  downloadButton.classList.remove("visible");
+  exportResult.classList.remove("visible");
+  exportProgress.classList.remove("visible");
 }
 
-initializeQuietFrame();
+initialize();
