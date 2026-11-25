@@ -1824,7 +1824,7 @@ body[data-stage="2"] .app-footer {
   .editor-layout {
     flex: 1;
     min-height: 0;
-    grid-template-columns: minmax(0,42%) minmax(0,1fr);
+    grid-template-columns: minmax(0,52%) minmax(0,1fr);
     gap: 9px;
     align-items: stretch;
   }
@@ -2094,7 +2094,7 @@ body[data-stage="2"] .app-footer {
   }
 
   .editor-layout {
-    grid-template-columns: minmax(0,40%) minmax(0,1fr);
+    grid-template-columns: minmax(0,48%) minmax(0,1fr);
     gap: 7px;
   }
 
@@ -2343,45 +2343,45 @@ body[data-stage="3"] .app-main {
 
   /* Avatar dan tombol ikuti */
   .mock-profile {
-    width: 11cqw;
-    height: 11cqw;
+    width: max(11cqw, 26px);
+    height: max(11cqw, 26px);
     margin-bottom: .8cqw;
   }
 
   .mock-follow {
     bottom: -1.95cqw;
-    width: 4.45cqw;
-    height: 4.45cqw;
-    font-size: 3.9cqw;
+    width: max(4.45cqw, 12px);
+    height: max(4.45cqw, 12px);
+    font-size: max(3.9cqw, 10px);
   }
 
   /* Ikon suka, komentar, favorit, dan bagikan */
   .mock-action {
-    min-width: 9.7cqw;
+    min-width: max(9.7cqw, 22px);
     gap: .85cqw;
   }
 
   .mock-action svg {
-    width: 8.2cqw;
-    height: 8.2cqw;
+    width: max(8.2cqw, 16px);
+    height: max(8.2cqw, 16px);
     max-height: none;
   }
 
   .mock-action span {
-    font-size: 2.8cqw;
+    font-size: max(2.8cqw, 7px);
     line-height: 1.1;
   }
 
   /* Cakram audio tetap menjadi elemen paling bawah */
   .mock-disc {
-    width: 11cqw;
-    height: 11cqw;
+    width: max(11cqw, 26px);
+    height: max(11cqw, 26px);
     margin-top: .55cqw;
-    border-width: 1.4cqw;
+    border-width: max(1.4cqw, 3px);
   }
 
   .mock-disc span {
-    font-size: 3.7cqw;
+    font-size: max(3.7cqw, 9px);
   }
 
   /* Nama profil dan caption di kiri bawah */
@@ -2389,7 +2389,7 @@ body[data-stage="3"] .app-main {
     left: 4cqw;
     right: 23cqw;
     bottom: 4cqw;
-    font-size: 2.8cqw;
+    font-size: max(2.8cqw, 8px);
   }
 
   .mock-caption strong {
