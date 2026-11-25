@@ -1,3 +1,4 @@
+
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
@@ -10,6 +11,7 @@ let selectedAlignment = 'center';
 let ffmpeg = null;
 let outputUrl = null;
 let previewUrl = null;
+let currentStep = 1;
 
 const styles = {
   cinematic: 'eq=contrast=1.18:brightness=-0.06:saturation=0.82',
@@ -27,6 +29,38 @@ const fonts = {
   soft: 'Arial, sans-serif'
 };
 
+function showStep(step) {
+  currentStep = step;
+
+  document.querySelectorAll('[data-step]').forEach((panel) => {
+    const active = Number(panel.dataset.step) === step;
+    panel.classList.toggle('active', active);
+    panel.hidden = !active;
+  });
+
+  document.querySelectorAll('[data-step-indicator]').forEach((item) => {
+    const number = Number(item.dataset.stepIndicator);
+    item.classList.toggle('active', number === step);
+    item.classList.toggle('completed', number < step);
+  });
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  if (step === 2) updatePreview();
+  if (step === 3) syncExportPreview();
+}
+
+function syncExportPreview() {
+  const preview = $('previewVideo');
+  const exportPreview = $('exportPreviewVideo');
+
+  if (previewUrl && exportPreview) {
+    exportPreview.src = previewUrl;
+    exportPreview.load();
+    exportPreview.play().catch(() => {});
+  }
+}
+
 function setProgress(title, percent, note = '') {
   $('progressWrap').hidden = false;
   $('progressTitle').textContent = title;
@@ -36,8 +70,23 @@ function setProgress(title, percent, note = '') {
 }
 
 function showError(message) {
-  $('errorBox').hidden = false;
-  $('errorBox').textContent = message;
+  const contentError = $('errorBox');
+  const exportError = $('errorBoxExport');
+
+  if (contentError) {
+    contentError.hidden = false;
+    contentError.textContent = message;
+  }
+
+  if (exportError) {
+    exportError.hidden = false;
+    exportError.textContent = message;
+  }
+}
+
+function clearErrors() {
+  if ($('errorBox')) $('errorBox').hidden = true;
+  if ($('errorBoxExport')) $('errorBoxExport').hidden = true;
 }
 
 function updatePreview() {
@@ -80,12 +129,23 @@ function updatePreview() {
 
   $('quotePanel').dataset.position = $('textPosition').value;
   $('quotePanel').dataset.blur = blurEnabled ? 'on' : 'off';
-  $('quotePanel').style.setProperty(
-    '--text-blur',
-    `${blurStrength}px`
-  );
-
+  $('quotePanel').style.setProperty('--text-blur', `${blurStrength}px`);
   $('previewScreen').dataset.style = selectedStyle;
+
+  const strength = Number($('filterStrength').value) / 100;
+  const previewFilters = {
+    cinematic: `brightness(${1 - strength * 0.06}) contrast(${1 + strength * 0.18}) saturate(${1 - strength * 0.18})`,
+    blue: `brightness(0.98) contrast(${1 + strength * 0.12}) saturate(${1 - strength * 0.25}) hue-rotate(8deg)`,
+    warm: `brightness(1.02) contrast(${1 + strength * 0.08}) saturate(${1 + strength * 0.12}) sepia(${strength * 0.18})`,
+    mono: `grayscale(1) contrast(${1 + strength * 0.12})`,
+    soft: `brightness(1.03) contrast(${1 - strength * 0.08}) saturate(${1 - strength * 0.12})`,
+    deep: `contrast(${1 + strength * 0.35}) saturate(${1 + strength * 0.08})`
+  };
+
+  $('previewVideo').style.filter = previewFilters[selectedStyle];
+  if ($('exportPreviewVideo')) {
+    $('exportPreviewVideo').style.filter = previewFilters[selectedStyle];
+  }
 }
 
 function createTextOverlay(quote, width, height) {
@@ -103,7 +163,6 @@ function createTextOverlay(quote, width, height) {
   const textMaxWidth = boxWidth - padding * 2;
   const maxHeight = height * 0.42;
   const paragraphGap = Number($('paragraphGap').value) * (width / 1080);
-
   const paragraphs = quote.replace(/\r\n/g, '\n').split(/\n{2,}/);
 
   let fontSize = Number($('textSize').value) * (width / 1080);
@@ -143,15 +202,10 @@ function createTextOverlay(quote, width, height) {
         if (line) result.push(line);
       });
 
-      if (paragraphIndex < paragraphs.length - 1) {
-        breaks += 1;
-      }
+      if (paragraphIndex < paragraphs.length - 1) breaks += 1;
     });
 
-    return {
-      lines: result,
-      paragraphBreaks: breaks
-    };
+    return { lines: result, paragraphBreaks: breaks };
   }
 
   let wrapped = wrapText(fontSize);
@@ -159,10 +213,8 @@ function createTextOverlay(quote, width, height) {
   paragraphBreaks = wrapped.paragraphBreaks;
 
   function totalTextHeight() {
-    return (
-      lines.length * fontSize * 1.35 +
-      paragraphBreaks * paragraphGap
-    );
+    return lines.length * fontSize * 1.35 +
+      paragraphBreaks * paragraphGap;
   }
 
   if (autoFit) {
@@ -189,7 +241,6 @@ function createTextOverlay(quote, width, height) {
   ) * 2;
 
   let y = (height - boxHeight) / 2;
-
   if (position === 'upper') y = height * 0.29;
   if (position === 'lower') y = height * 0.54;
 
@@ -197,18 +248,10 @@ function createTextOverlay(quote, width, height) {
   y = Math.floor(y / 2) * 2;
 
   const x = Math.floor(((width - boxWidth) / 2) / 2) * 2;
-
   const blurEnabled = $('enableTextBlur').checked;
   const blurStrength = Number($('blurStrength').value);
 
-  // Panel dibuat tipis agar video di belakang tetap terlihat.
-  const gradient = ctx.createLinearGradient(
-    x,
-    y,
-    x,
-    y + boxHeight
-  );
-
+  const gradient = ctx.createLinearGradient(x, y, x, y + boxHeight);
   gradient.addColorStop(0, 'rgba(10,10,14,0.12)');
   gradient.addColorStop(1, 'rgba(10,10,14,0.20)');
 
@@ -223,23 +266,16 @@ function createTextOverlay(quote, width, height) {
   ctx.font = `${selectedFont === 'bold' ? '900' : '400'} ${fontSize}px ${fonts[selectedFont]}`;
 
   let textX = width / 2;
+  if (selectedAlignment === 'left') textX = x + padding;
+  if (selectedAlignment === 'right') textX = x + boxWidth - padding;
 
-  if (selectedAlignment === 'left') {
-    textX = x + padding;
-  } else if (selectedAlignment === 'right') {
-    textX = x + boxWidth - padding;
-  }
-
-  let cursorY =
-    y + (boxHeight - contentHeight) / 2 + lineHeight / 2;
-
+  let cursorY = y + (boxHeight - contentHeight) / 2 + lineHeight / 2;
   let lineIndex = 0;
 
   paragraphs.forEach((paragraph, paragraphIndex) => {
     const paragraphLineCount = paragraph.split('\n').reduce(
       (count, hardLine) => {
         const words = hardLine.split(/\s+/).filter(Boolean);
-
         if (words.length === 0) return count + 1;
 
         let line = '';
@@ -247,7 +283,6 @@ function createTextOverlay(quote, width, height) {
 
         for (const word of words) {
           const test = line ? `${line} ${word}` : word;
-
           if (ctx.measureText(test).width > textMaxWidth && line) {
             wrappedCount += 1;
             line = word;
@@ -262,22 +297,12 @@ function createTextOverlay(quote, width, height) {
     );
 
     for (let i = 0; i < paragraphLineCount; i += 1) {
-      const line = lines[lineIndex] ?? '';
-
-      ctx.fillText(
-        line,
-        textX,
-        cursorY,
-        textMaxWidth
-      );
-
+      ctx.fillText(lines[lineIndex] ?? '', textX, cursorY, textMaxWidth);
       cursorY += lineHeight;
       lineIndex += 1;
     }
 
-    if (paragraphIndex < paragraphs.length - 1) {
-      cursorY += paragraphGap;
-    }
+    if (paragraphIndex < paragraphs.length - 1) cursorY += paragraphGap;
   });
 
   return new Promise((resolve) => {
@@ -330,6 +355,7 @@ async function renderVideo() {
 
   if (!quote) {
     showError('Tulis kutipan terlebih dahulu.');
+    showStep(1);
     return;
   }
 
@@ -338,7 +364,7 @@ async function renderVideo() {
     return;
   }
 
-  $('errorBox').hidden = true;
+  clearErrors();
   $('renderBtn').disabled = true;
   $('outputCard').hidden = true;
 
@@ -350,35 +376,24 @@ async function renderVideo() {
     );
 
     await loadEngine();
-
     setProgress('Membaca video…', 15);
 
     const inputName = 'input-video';
     const outputName = 'quietframe-output.mp4';
     const overlayName = 'quote-overlay.png';
 
-    await ffmpeg.writeFile(
-      inputName,
-      await fetchFile(sourceFile)
-    );
+    await ffmpeg.writeFile(inputName, await fetchFile(sourceFile));
 
     const width = Number($('resolution').value);
     const height = width * 16 / 9;
 
-    const overlay = await createTextOverlay(
-      quote,
-      width,
-      height
-    );
+    const overlay = await createTextOverlay(quote, width, height);
 
     if (!overlay || !overlay.blob) {
       throw new Error('Gagal membuat teks overlay.');
     }
 
-    await ffmpeg.writeFile(
-      overlayName,
-      await fetchFile(overlay.blob)
-    );
+    await ffmpeg.writeFile(overlayName, await fetchFile(overlay.blob));
 
     const strength = Number($('filterStrength').value) / 100;
     const filter = styles[selectedStyle];
@@ -397,10 +412,7 @@ async function renderVideo() {
     let videoInput = '[base]';
 
     if (overlay.blurEnabled && overlay.blurStrength > 0) {
-      const radius = Math.max(
-        1,
-        Math.round(overlay.blurStrength)
-      );
+      const radius = Math.max(1, Math.round(overlay.blurStrength));
 
       graphParts.push(
         `[base]split=2[baseclean][blurinput]`,
@@ -443,25 +455,16 @@ async function renderVideo() {
     args.push('-movflags', '+faststart', outputName);
 
     setProgress('Membuat video MP4…', 30);
-
     await ffmpeg.exec(args);
 
     const data = await ffmpeg.readFile(outputName);
+    const blob = new Blob([data.buffer], { type: 'video/mp4' });
 
-    const blob = new Blob([data.buffer], {
-      type: 'video/mp4'
-    });
-
-    if (outputUrl) {
-      URL.revokeObjectURL(outputUrl);
-    }
-
+    if (outputUrl) URL.revokeObjectURL(outputUrl);
     outputUrl = URL.createObjectURL(blob);
 
     $('downloadBtn').href = outputUrl;
-    $('outputInfo').textContent =
-      `${width} × ${height} · MP4 · 9:16`;
-
+    $('outputInfo').textContent = `${width} × ${height} · MP4 · 9:16`;
     $('outputCard').hidden = false;
 
     setProgress(
@@ -472,13 +475,10 @@ async function renderVideo() {
 
   } catch (error) {
     console.error(error);
-
     showError(
       `Gagal memproses video: ${error.message || error}. Coba gunakan video MP4 yang lebih kecil.`
     );
-
     setProgress('Proses gagal', 0);
-
   } finally {
     $('renderBtn').disabled = false;
   }
@@ -494,18 +494,64 @@ $('videoFile').addEventListener('change', (event) => {
   $('videoMeta').textContent =
     `${(file.size / 1024 / 1024).toFixed(1)} MB`;
 
-  if (previewUrl) {
-    URL.revokeObjectURL(previewUrl);
-  }
-
+  if (previewUrl) URL.revokeObjectURL(previewUrl);
   previewUrl = URL.createObjectURL(file);
 
   $('previewVideo').src = previewUrl;
   $('previewVideo').load();
   $('previewVideo').play().catch(() => {});
 
+  $('exportPreviewVideo').src = previewUrl;
+  $('exportPreviewVideo').load();
+  $('exportPreviewVideo').play().catch(() => {});
+
+  $('toEditor').disabled = false;
   $('renderBtn').disabled = false;
-  $('errorBox').hidden = true;
+  clearErrors();
+});
+
+$('toEditor').addEventListener('click', () => {
+  if (!sourceFile) {
+    showError('Pilih video terlebih dahulu.');
+    return;
+  }
+  if (!$('quoteText').value.trim()) {
+    showError('Tulis kutipan terlebih dahulu.');
+    $('quoteText').focus();
+    return;
+  }
+  clearErrors();
+  showStep(2);
+});
+
+$('backToContent').addEventListener('click', () => showStep(1));
+
+$('toExport').addEventListener('click', () => {
+  if (!$('quoteText').value.trim()) {
+    showError('Tulis kutipan terlebih dahulu.');
+    showStep(1);
+    return;
+  }
+  clearErrors();
+  showStep(3);
+});
+
+$('backToEditor').addEventListener('click', () => showStep(2));
+
+document.querySelectorAll('[data-tab]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const tab = button.dataset.tab;
+
+    document.querySelectorAll('[data-tab]').forEach((item) => {
+      item.classList.toggle('active', item === button);
+    });
+
+    document.querySelectorAll('[data-tab-panel]').forEach((panel) => {
+      const active = panel.dataset.tabPanel === tab;
+      panel.classList.toggle('active', active);
+      panel.hidden = !active;
+    });
+  });
 });
 
 $('quoteText').addEventListener('input', updatePreview);
@@ -518,18 +564,22 @@ $('textPosition').addEventListener('change', updatePreview);
 $('textSize').addEventListener('input', updatePreview);
 $('autoFit').addEventListener('change', updatePreview);
 
+$('audioModeExport').addEventListener('change', () => {
+  $('audioMode').value = $('audioModeExport').value;
+});
+
+$('audioMode').addEventListener('change', () => {
+  $('audioModeExport').value = $('audioMode').value;
+});
+
 $('previewExpand').addEventListener('click', () => {
   const column = $('previewColumn');
   const expanded = column.classList.toggle('preview-expanded');
 
-  $('previewExpand').setAttribute(
-    'aria-expanded',
-    String(expanded)
-  );
-
+  $('previewExpand').setAttribute('aria-expanded', String(expanded));
   $('previewExpand').textContent = expanded
-    ? 'Perkecil preview ↙'
-    : 'Perbesar preview ↗';
+    ? 'Perkecil ↙'
+    : 'Perbesar ↗';
 });
 
 document.querySelectorAll('[data-align]').forEach((button) => {
@@ -538,7 +588,6 @@ document.querySelectorAll('[data-align]').forEach((button) => {
 
     document.querySelectorAll('[data-align]').forEach((item) => {
       const active = item === button;
-
       item.classList.toggle('active', active);
       item.setAttribute('aria-pressed', String(active));
     });
@@ -573,4 +622,8 @@ document.querySelectorAll('[data-font]').forEach((button) => {
 
 $('renderBtn').addEventListener('click', renderVideo);
 
+$('quoteText').value = '';
+$('renderBtn').disabled = true;
+$('toEditor').disabled = true;
 updatePreview();
+showStep(1);
