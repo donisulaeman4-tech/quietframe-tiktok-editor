@@ -1,3 +1,4 @@
+
 /* =========================================
    QUIETFRAME — COMPLETE RESPONSIVE CSS
    Revisi terpadu
@@ -2322,3 +2323,80 @@ body[data-stage="3"] .app-main {
 }
 
 /* END QUIETFRAME */
+
+/* =========================================
+   FIX: TIKTOK UI RESPONSIF BERDASARKAN
+   LEBAR BINGKAI VIDEO 9:16
+========================================= */
+
+@supports (width: 1cqw) {
+  .preview-screen {
+    container-type: inline-size;
+  }
+
+  /* Kolom UI tetap satu kesatuan di kanan bawah */
+  .mock-actions {
+    right: 3.5cqw;
+    bottom: 3.5cqw;
+    gap: 2.2cqw;
+  }
+
+  /* Foto profil */
+  .mock-profile {
+    width: 10cqw;
+    height: 10cqw;
+    margin-bottom: .8cqw;
+  }
+
+  .mock-follow {
+    bottom: -1.95cqw;
+    width: 4.45cqw;
+    height: 4.45cqw;
+    font-size: 3.9cqw;
+  }
+
+  /* Ikon dan label */
+  .mock-action {
+    min-width: 9.7cqw;
+    gap: .85cqw;
+  }
+
+  .mock-action svg {
+    width: 7.2cqw;
+    height: 7.2cqw;
+    max-height: none;
+  }
+
+  .mock-action span {
+    font-size: 2.35cqw;
+    line-height: 1.1;
+  }
+
+  /* Cakram audio tetap paling bawah */
+  .mock-disc {
+    width: 10cqw;
+    height: 10cqw;
+    margin-top: .55cqw;
+    border-width: 1.4cqw;
+  }
+
+  .mock-disc span {
+    font-size: 3.35cqw;
+  }
+
+  /* Nama profil dan caption */
+  .mock-caption {
+    left: 4cqw;
+    right: 23cqw;
+    bottom: 4cqw;
+    font-size: 2.5cqw;
+  }
+
+  .mock-caption strong {
+    margin-bottom: 1.1cqw;
+  }
+
+  .mock-caption p {
+    margin-bottom: 1.4cqw;
+  }
+}
