@@ -1,30 +1,21 @@
-
 /* =========================================
-   QUIETFRAME — MAIN STYLE
+   QUIETFRAME — COMPLETE STYLE
 ========================================= */
 
 :root {
   color-scheme: dark;
-
   --bg: #09090b;
   --surface: #111114;
   --surface-2: #19191e;
   --surface-3: #222228;
-
   --border: rgba(255,255,255,.09);
-
   --text: #f5f5f7;
   --muted: #92929c;
   --subtle: #686872;
-
   --accent: #e7c994;
   --accent-dark: #bda477;
-
-  --radius: 16px;
   --header-height: 58px;
-
-  font-family: Inter, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 * {
@@ -41,11 +32,7 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   background:
-    radial-gradient(
-      circle at 50% -20%,
-      rgba(231,201,148,.07),
-      transparent 38%
-    ),
+    radial-gradient(circle at 50% -20%, rgba(231,201,148,.07), transparent 38%),
     var(--bg);
   color: var(--text);
   font-size: 14px;
@@ -61,6 +48,7 @@ select {
 
 button {
   color: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button:focus-visible,
@@ -74,11 +62,6 @@ select:focus-visible {
 button:disabled {
   opacity: .45;
   cursor: not-allowed;
-}
-
-button,
-select {
-  -webkit-tap-highlight-color: transparent;
 }
 
 .app-shell {
@@ -97,7 +80,7 @@ select {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--border);
-  background: rgba(9,9,11,.92);
+  background: rgba(9,9,11,.94);
   position: relative;
   z-index: 20;
 }
@@ -184,10 +167,7 @@ select {
   letter-spacing: 1.5px;
 }
 
-
-/* =========================================
-   SHARED ELEMENTS
-========================================= */
+/* SHARED */
 
 .eyebrow {
   display: block;
@@ -351,19 +331,16 @@ textarea::placeholder {
   color: #666670;
 }
 
-
-/* =========================================
-   UPLOAD STAGE
-========================================= */
+/* UPLOAD */
 
 .upload-stage {
   width: min(620px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 48px 0 35px;
+  padding: 38px 0 25px;
 }
 
 .welcome-heading {
-  margin-bottom: 27px;
+  margin-bottom: 24px;
 }
 
 .welcome-heading h1 {
@@ -578,10 +555,7 @@ textarea::placeholder {
   font-size: 9px;
 }
 
-
-/* =========================================
-   EDITOR STAGE
-========================================= */
+/* EDITOR LAYOUT */
 
 .editor-stage {
   width: min(1250px, calc(100% - 40px));
@@ -623,6 +597,7 @@ textarea::placeholder {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 6px;
 }
 
 .preview-topline > span {
@@ -632,7 +607,8 @@ textarea::placeholder {
   letter-spacing: 1.4px;
 }
 
-.preview-option {
+.preview-option,
+.preview-fullscreen-button {
   padding: 6px 9px;
   border: 1px solid var(--border);
   border-radius: 20px;
@@ -644,6 +620,10 @@ textarea::placeholder {
 
 .preview-option.active {
   border-color: rgba(231,201,148,.3);
+  color: var(--accent);
+}
+
+.preview-fullscreen-button {
   color: var(--accent);
 }
 
@@ -666,6 +646,7 @@ textarea::placeholder {
   border-radius: 19px;
   background: #19191d;
   isolation: isolate;
+  container-type: inline-size;
 }
 
 #previewVideo {
@@ -682,15 +663,16 @@ textarea::placeholder {
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background:
-    linear-gradient(
-      to bottom,
-      rgba(0,0,0,.18),
-      transparent 22%,
-      transparent 60%,
-      rgba(0,0,0,.35)
-    );
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,.18),
+    transparent 22%,
+    transparent 60%,
+    rgba(0,0,0,.35)
+  );
 }
+
+/* TIKTOK MOCK UI — ALL SIZES RELATIVE TO PREVIEW */
 
 .mock-tiktok-ui {
   position: absolute;
@@ -714,13 +696,13 @@ textarea::placeholder {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: clamp(7px, 1.8vw, 11px);
+  font-size: 3.1cqw;
   font-weight: 700;
 }
 
 .status-symbols svg {
-  width: 25px;
-  height: 13px;
+  width: 8cqw;
+  height: 4.2cqw;
   fill: white;
 }
 
@@ -732,13 +714,13 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  gap: 5px;
-  font-size: clamp(7px, 1.8vw, 11px);
+  gap: 1.5cqw;
+  font-size: 3.2cqw;
   white-space: nowrap;
 }
 
 .mock-top > span:first-child {
-  font-size: 8px;
+  font-size: 2.5cqw;
   opacity: .8;
 }
 
@@ -749,18 +731,18 @@ textarea::placeholder {
 
 .mock-top strong::after {
   position: absolute;
-  bottom: -5px;
+  bottom: -1.6cqw;
   left: 30%;
   width: 40%;
-  height: 2px;
+  height: .6cqw;
   border-radius: 5px;
   background: white;
   content: "";
 }
 
 .search-icon {
-  width: 17px;
-  height: 17px;
+  width: 5.5cqw;
+  height: 5.5cqw;
   fill: none;
   stroke: white;
   stroke-width: 2;
@@ -773,19 +755,19 @@ textarea::placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: clamp(10px, 2.5vw, 17px);
+  gap: 3.2cqw;
 }
 
 .mock-profile {
   position: relative;
-  margin-bottom: 2px;
+  margin-bottom: 1cqw;
 }
 
 .mock-avatar {
-  width: clamp(25px, 7vw, 39px);
-  height: clamp(25px, 7vw, 39px);
-  padding: 2px;
-  border: 1.5px solid white;
+  width: 9cqw;
+  height: 9cqw;
+  padding: .5cqw;
+  border: .5cqw solid white;
   border-radius: 50%;
   background: #4d4d53;
 }
@@ -798,17 +780,17 @@ textarea::placeholder {
 
 .mock-follow {
   position: absolute;
-  bottom: -7px;
+  bottom: -1.8cqw;
   left: 50%;
-  width: 15px;
-  height: 15px;
+  width: 4.3cqw;
+  height: 4.3cqw;
   display: grid;
   place-items: center;
   transform: translateX(-50%);
   border-radius: 50%;
   background: #fe2c55;
   color: white;
-  font-size: 13px;
+  font-size: 3.8cqw;
   font-weight: 800;
 }
 
@@ -816,12 +798,12 @@ textarea::placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: .8cqw;
 }
 
 .mock-action svg {
-  width: clamp(20px, 5.5vw, 29px);
-  height: clamp(20px, 5.5vw, 29px);
+  width: 7.1cqw;
+  height: 7.1cqw;
   fill: rgba(255,255,255,.96);
   stroke: white;
   stroke-width: 1.5;
@@ -834,19 +816,19 @@ textarea::placeholder {
 }
 
 .mock-action span {
-  font-size: clamp(6px, 1.6vw, 9px);
+  font-size: 2.7cqw;
   font-weight: 700;
 }
 
 .mock-disc {
-  width: clamp(25px, 6vw, 35px);
-  height: clamp(25px, 6vw, 35px);
+  width: 8.5cqw;
+  height: 8.5cqw;
   display: grid;
   place-items: center;
-  border: 4px solid #29292e;
+  border: 1cqw solid #29292e;
   border-radius: 50%;
   background: #65656d;
-  font-size: 15px;
+  font-size: 4.5cqw;
 }
 
 .mock-caption {
@@ -854,18 +836,18 @@ textarea::placeholder {
   left: 4%;
   bottom: 9%;
   width: 67%;
-  font-size: clamp(7px, 1.7vw, 10px);
+  font-size: 2.8cqw;
   line-height: 1.4;
 }
 
 .mock-caption strong {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 1cqw;
   font-size: 1.05em;
 }
 
 .mock-caption p {
-  margin: 0 0 4px;
+  margin: 0 0 1cqw;
 }
 
 .mock-caption > span {
@@ -891,13 +873,13 @@ textarea::placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
+  gap: .3cqw;
   color: rgba(255,255,255,.75);
-  font-size: clamp(5px, 1.3vw, 8px);
+  font-size: 2.2cqw;
 }
 
 .mock-bottom b {
-  font-size: clamp(13px, 3vw, 18px);
+  font-size: 5cqw;
   line-height: 1;
 }
 
@@ -906,27 +888,35 @@ textarea::placeholder {
 }
 
 .mock-plus {
-  width: 27px;
-  height: 19px;
+  width: 8cqw;
+  height: 5.6cqw;
   display: grid !important;
   place-items: center;
-  border-right: 3px solid #29d4e8;
-  border-left: 3px solid #fe2c55;
-  border-radius: 6px;
+  border-right: .9cqw solid #29d4e8;
+  border-left: .9cqw solid #fe2c55;
+  border-radius: 1.4cqw;
   background: white;
   color: #111 !important;
-  font-size: 19px !important;
+  font-size: 5cqw !important;
   font-weight: 800;
 }
 
+/* QUOTE TEXT */
+
 .quote-panel {
   position: absolute;
-  z-index: 2;
+  z-index: 4;
   top: 50%;
-  left: 50%;
+  left: calc(50% + var(--quote-offset-x, 0%));
   width: 78%;
   transform: translate(-50%, -50%);
-  pointer-events: none;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+}
+
+.quote-panel:active {
+  cursor: grabbing;
 }
 
 .quote-panel.position-top {
@@ -944,7 +934,7 @@ textarea::placeholder {
 .quote-panel-inner {
   padding: 5px;
   border-radius: 9px;
-  transform: translateY(var(--quote-offset, 0%));
+  transform: translateY(var(--quote-offset, 0px));
 }
 
 .quote-panel-inner.blur-active {
@@ -963,6 +953,7 @@ textarea::placeholder {
   overflow-wrap: anywhere;
   white-space: pre-wrap;
   text-shadow: 0 2px 9px rgba(0,0,0,.6);
+  user-select: none;
 }
 
 .preview-play-button {
@@ -999,10 +990,7 @@ textarea::placeholder {
   letter-spacing: .6px;
 }
 
-
-/* =========================================
-   EDITOR CONTROLS
-========================================= */
+/* EDITOR CONTROLS */
 
 .controls-column {
   min-width: 0;
@@ -1212,10 +1200,7 @@ textarea::placeholder {
   padding-top: 2px;
 }
 
-
-/* =========================================
-   FONT PANEL
-========================================= */
+/* FONT PANEL */
 
 .font-grid {
   display: grid;
@@ -1258,7 +1243,8 @@ textarea::placeholder {
   font-family: Georgia, serif;
 }
 
-.font-clean {
+.font-clean,
+.font-modern {
   font-family: Arial, sans-serif;
 }
 
@@ -1275,11 +1261,6 @@ textarea::placeholder {
   font-family: "Palatino Linotype", serif;
 }
 
-.font-modern {
-  font-family: Arial, sans-serif;
-  font-weight: 300;
-}
-
 .font-typewriter {
   font-family: "Courier New", monospace;
 }
@@ -1289,10 +1270,7 @@ textarea::placeholder {
   font-style: italic;
 }
 
-
-/* =========================================
-   FILTER PANEL
-========================================= */
+/* FILTER PANEL */
 
 .filter-grid {
   display: grid;
@@ -1333,8 +1311,7 @@ textarea::placeholder {
   aspect-ratio: 1.5;
   display: block;
   border-radius: 6px;
-  background:
-    linear-gradient(135deg,#6f7772,#222c2b 55%,#b2a18c);
+  background: linear-gradient(135deg,#6f7772,#222c2b 55%,#b2a18c);
 }
 
 .filter-normal {
@@ -1373,10 +1350,7 @@ textarea::placeholder {
   background: linear-gradient(135deg,#62657f,#272d4c 60%,#10101e);
 }
 
-
-/* =========================================
-   EXPORT STAGE
-========================================= */
+/* EXPORT */
 
 .export-stage {
   width: min(560px, calc(100% - 32px));
@@ -1647,28 +1621,29 @@ textarea::placeholder {
   text-align: center;
 }
 
+/* STAGE HEIGHT */
 
-/* =========================================
-   STAGE HEIGHT MANAGEMENT
-========================================= */
-
-body[data-stage="2"] {
+body[data-stage="2"],
+body[data-stage="1"] {
   overflow: hidden;
 }
 
-body[data-stage="2"] .app-shell {
+body[data-stage="2"] .app-shell,
+body[data-stage="1"] .app-shell {
   height: 100vh;
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
 }
 
-body[data-stage="2"] .app-main {
+body[data-stage="2"] .app-main,
+body[data-stage="1"] .app-main {
   min-height: 0;
   overflow: hidden;
 }
 
-body[data-stage="2"] .editor-stage {
+body[data-stage="2"] .editor-stage,
+body[data-stage="1"] .upload-stage {
   min-height: 0;
   height: 100%;
   overflow: hidden;
@@ -1678,10 +1653,7 @@ body[data-stage="2"] .app-footer {
   display: none;
 }
 
-
-/* =========================================
-   TABLET
-========================================= */
+/* TABLET */
 
 @media (max-width: 900px) {
   .editor-stage {
@@ -1710,10 +1682,7 @@ body[data-stage="2"] .app-footer {
   }
 }
 
-
-/* =========================================
-   MOBILE EDITOR
-========================================= */
+/* MOBILE */
 
 @media (max-width: 600px) {
   :root {
@@ -1740,6 +1709,132 @@ body[data-stage="2"] .app-footer {
     font-size: 8px;
   }
 
+  /* Upload screen fits the available screen */
+  body[data-stage="1"] .app-footer {
+    min-height: 30px;
+    padding: 6px 10px;
+    font-size: 8px;
+  }
+
+  .upload-stage {
+    width: calc(100% - 26px);
+    padding: 13px 0 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .welcome-heading {
+    margin-bottom: 12px;
+  }
+
+  .welcome-heading .eyebrow {
+    font-size: 7px;
+  }
+
+  .welcome-heading h1 {
+    margin: 7px 0;
+    font-size: clamp(27px, 8vw, 36px);
+    line-height: 1.05;
+  }
+
+  .welcome-heading p {
+    font-size: 10px;
+    line-height: 1.45;
+  }
+
+  .upload-card {
+    padding: 11px;
+    border-radius: 13px;
+  }
+
+  .upload-zone {
+    min-height: 100px;
+    padding: 10px;
+    gap: 5px;
+  }
+
+  .upload-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .upload-icon svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  .upload-zone strong {
+    font-size: 11px;
+  }
+
+  .upload-zone > span:not(.upload-icon) {
+    font-size: 9px;
+  }
+
+  .upload-zone small {
+    font-size: 7px;
+  }
+
+  .selected-video {
+    margin-top: 7px;
+    padding: 7px;
+  }
+
+  .selected-video-info strong {
+    font-size: 9px;
+  }
+
+  .selected-video-info small {
+    font-size: 8px;
+  }
+
+  .file-icon {
+    width: 29px;
+    height: 29px;
+    flex-basis: 29px;
+  }
+
+  .quote-input-area {
+    margin-top: 12px;
+  }
+
+  .field-heading {
+    margin-bottom: 6px;
+  }
+
+  .field-heading label {
+    font-size: 9px;
+  }
+
+  .field-heading span {
+    font-size: 8px;
+  }
+
+  #quoteInput {
+    min-height: 65px;
+    padding: 8px;
+    font-size: 11px;
+  }
+
+  .textarea-footer {
+    margin-top: 5px;
+    font-size: 7px;
+  }
+
+  #startEditing {
+    min-height: 40px;
+    margin-top: 11px;
+    font-size: 11px;
+  }
+
+  .upload-note {
+    margin-top: 8px;
+    font-size: 7px;
+  }
+
+  /* Editor */
   .editor-stage {
     width: calc(100% - 16px);
     height: 100%;
@@ -1797,7 +1892,8 @@ body[data-stage="2"] .app-footer {
     letter-spacing: .6px;
   }
 
-  .preview-option {
+  .preview-option,
+  .preview-fullscreen-button {
     padding: 4px 6px;
     font-size: 7px;
   }
@@ -1985,103 +2081,22 @@ body[data-stage="2"] .app-footer {
     line-height: 1.2;
   }
 
-  .mock-caption {
-    font-size: 6px;
-  }
-
-  .mock-actions {
-    gap: 9px;
-  }
-
-  .mock-bottom {
-    height: 6.5%;
-  }
-}
-
-
-/* =========================================
-   SMALL MOBILE
-========================================= */
-
-@media (max-width: 380px) {
-  .editor-stage {
-    width: calc(100% - 12px);
-  }
-
-  .editor-layout {
-    grid-template-columns: minmax(0, 40%) minmax(0,1fr);
-    gap: 7px;
-  }
-
-  .settings-card {
-    padding: 8px;
-  }
-
-  .toolbar {
-    min-height: 44px;
-    flex-basis: 44px;
-  }
-
-  .tool-tab b {
-    font-size: 12px;
-  }
-
-  .tool-tab span {
-    font-size: 7px;
-  }
-
-  .preview-topline > span {
-    font-size: 6px;
-  }
-
-  .preview-option {
-    font-size: 6px;
-  }
-
-  .position-button,
-  .align-button {
-    font-size: 8px;
-  }
-
-  .font-grid {
-    grid-template-columns: repeat(2,minmax(0,1fr));
-  }
-}
-
-
-/* =========================================
-   UPLOAD / EXPORT MOBILE
-========================================= */
-
-@media (max-width: 600px) {
-  .upload-stage {
-    width: calc(100% - 26px);
-    padding-top: 28px;
-  }
-
-  .welcome-heading {
-    margin-bottom: 20px;
-  }
-
-  .welcome-heading h1 {
-    font-size: 36px;
-  }
-
-  .upload-card {
-    padding: 14px;
-  }
-
-  .upload-zone {
-    min-height: 130px;
-  }
-
+  /* Export */
   .export-stage {
     width: calc(100% - 24px);
-    padding-top: 24px;
+    padding-top: 18px;
+  }
+
+  .export-heading {
+    margin-bottom: 13px;
   }
 
   .export-heading h2 {
-    font-size: 29px;
+    font-size: 27px;
+  }
+
+  .export-heading p {
+    font-size: 10px;
   }
 
   .export-card {
@@ -2115,12 +2130,86 @@ body[data-stage="2"] .app-footer {
   }
 }
 
+/* SMALL MOBILE */
 
-/* =========================================
-   VERY SHORT SCREENS
-========================================= */
+@media (max-width: 380px) {
+  .editor-stage {
+    width: calc(100% - 12px);
+  }
+
+  .editor-layout {
+    grid-template-columns: minmax(0, 40%) minmax(0,1fr);
+    gap: 7px;
+  }
+
+  .settings-card {
+    padding: 8px;
+  }
+
+  .toolbar {
+    min-height: 44px;
+    flex-basis: 44px;
+  }
+
+  .tool-tab b {
+    font-size: 12px;
+  }
+
+  .tool-tab span {
+    font-size: 7px;
+  }
+
+  .preview-topline > span {
+    font-size: 6px;
+  }
+
+  .preview-option,
+  .preview-fullscreen-button {
+    font-size: 6px;
+  }
+
+  .position-button,
+  .align-button {
+    font-size: 8px;
+  }
+
+  .font-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+}
+
+/* VERY SHORT SCREENS */
 
 @media (max-height: 650px) and (max-width: 600px) {
+  .upload-stage {
+    padding-top: 7px;
+    padding-bottom: 4px;
+  }
+
+  .welcome-heading {
+    margin-bottom: 7px;
+  }
+
+  .welcome-heading h1 {
+    font-size: 27px;
+  }
+
+  .welcome-heading p {
+    font-size: 9px;
+  }
+
+  .upload-zone {
+    min-height: 82px;
+  }
+
+  #quoteInput {
+    min-height: 52px;
+  }
+
+  .upload-note {
+    margin-top: 5px;
+  }
+
   .editor-heading {
     min-height: 30px;
     flex-basis: 30px;
@@ -2156,10 +2245,77 @@ body[data-stage="2"] .app-footer {
   }
 }
 
+/* PREVIEW EXPANDED */
 
-/* =========================================
-   ACCESSIBILITY
-========================================= */
+body.preview-expanded {
+  overflow: hidden;
+}
+
+body.preview-expanded .app-header,
+body.preview-expanded .editor-heading,
+body.preview-expanded .controls-column,
+body.preview-expanded .preview-footnote {
+  display: none !important;
+}
+
+body.preview-expanded .app-shell,
+body.preview-expanded .app-main,
+body.preview-expanded .editor-stage,
+body.preview-expanded .editor-layout,
+body.preview-expanded .preview-column {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body.preview-expanded .editor-layout {
+  display: block;
+}
+
+body.preview-expanded .phone-frame {
+  width: auto;
+  height: 100%;
+  max-width: none;
+  max-height: 100%;
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #000;
+  box-shadow: none;
+  aspect-ratio: 9 / 16;
+}
+
+body.preview-expanded .preview-screen {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  border-radius: 0;
+}
+
+body.preview-expanded .preview-topline {
+  position: absolute;
+  z-index: 30;
+  top: max(8px, env(safe-area-inset-top));
+  right: 10px;
+  margin: 0;
+}
+
+body.preview-expanded .preview-topline > span,
+body.preview-expanded #toggleTikTokUI {
+  display: none;
+}
+
+body.preview-expanded .preview-fullscreen-button {
+  padding: 8px 13px;
+  background: rgba(0,0,0,.65);
+  color: #fff;
+}
+
+/* ACCESSIBILITY */
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -2172,7 +2328,4 @@ body[data-stage="2"] .app-footer {
   }
 }
 
-
-/* =========================================
-   END QUIETFRAME
-========================================= */
+/* END QUIETFRAME */
