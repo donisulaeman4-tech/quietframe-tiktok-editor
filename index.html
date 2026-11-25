@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -59,7 +58,12 @@
               <small id="videoFileSize">Pilih video atau foto dari perangkat</small>
             </div>
           </div>
-          <button type="button" id="removeVideo" class="icon-button" aria-label="Hapus media">×</button>
+          <button
+            type="button"
+            id="removeVideo"
+            class="icon-button"
+            aria-label="Hapus media"
+          >×</button>
         </div>
 
         <div class="quote-input-area">
@@ -81,7 +85,12 @@
           </div>
         </div>
 
-        <button class="primary-button full-button" id="startEditing" type="button" disabled>
+        <button
+          class="primary-button full-button"
+          id="startEditing"
+          type="button"
+          disabled
+        >
           Mulai Mengedit <span>→</span>
         </button>
       </div>
@@ -95,7 +104,6 @@
       </div>
     </section>
 
-
     <!-- HALAMAN EDITOR -->
     <section class="stage editor-stage" data-step="2">
 
@@ -104,17 +112,23 @@
           <span class="eyebrow">CREATIVE WORKSPACE</span>
           <h2>Editor</h2>
         </div>
-        <button type="button" class="text-button" id="backToUpload">← Kembali</button>
+        <button type="button" class="text-button" id="backToUpload">
+          ← Kembali
+        </button>
       </div>
 
       <div class="editor-layout">
 
-        <!-- PRATINJAU VIDEO 9:16 -->
+        <!-- PRATINJAU 9:16 -->
         <div class="preview-column">
 
           <div class="preview-topline">
             <span>PRATINJAU</span>
-            <button type="button" id="toggleTikTokUI" class="preview-option active">
+            <button
+              type="button"
+              id="toggleTikTokUI"
+              class="preview-option active"
+            >
               UI TikTok
             </button>
           </div>
@@ -141,7 +155,7 @@
               <!-- SIMULASI UI TIKTOK -->
               <div class="mock-tiktok-ui" id="mockTikTokUI">
 
-                <!-- KOLOM AKSI KANAN -->
+                <!-- SELURUH KOLOM AKSI TETAP SATU KELOMPOK -->
                 <div class="mock-actions">
 
                   <!-- PROFIL -->
@@ -158,7 +172,11 @@
 
                   <!-- SUKA -->
                   <div class="mock-action">
-                    <svg viewBox="0 0 24 24" class="heart-icon" aria-hidden="true">
+                    <svg
+                      viewBox="0 0 24 24"
+                      class="heart-icon"
+                      aria-hidden="true"
+                    >
                       <path d="M20.8 8.8c0 5.2-8.8 11-8.8 11S3.2 14 3.2 8.8a4.8 4.8 0 0 1 8.8-2.6 4.8 4.8 0 0 1 8.8 2.6Z"/>
                     </svg>
                     <span>12.8K</span>
@@ -191,7 +209,7 @@
                     <span>Bagikan</span>
                   </div>
 
-                  <!-- PIRINGAN AUDIO -->
+                  <!-- CAKRAM AUDIO PALING BAWAH -->
                   <div class="mock-disc">
                     <span>♪</span>
                   </div>
@@ -208,7 +226,6 @@
               </div>
               <!-- AKHIR SIMULASI UI TIKTOK -->
 
-
               <!-- TEKS KUTIPAN -->
               <div class="quote-panel position-center" id="quotePanel">
                 <div class="quote-panel-inner" id="quotePanelInner">
@@ -219,8 +236,15 @@
               </div>
 
               <!-- GARIS BANTU SAAT TEKS DIGESER -->
-              <div class="alignment-guide guide-vertical" id="guideVertical"></div>
-              <div class="alignment-guide guide-horizontal" id="guideHorizontal"></div>
+              <div
+                class="alignment-guide guide-vertical"
+                id="guideVertical"
+              ></div>
+
+              <div
+                class="alignment-guide guide-horizontal"
+                id="guideHorizontal"
+              ></div>
 
               <!-- TOMBOL PUTAR / JEDA -->
               <button
@@ -242,28 +266,55 @@
 
         </div>
 
-
         <!-- PANEL PENGATURAN -->
         <div class="controls-column">
 
+          <!-- TOOLBAR -->
           <div class="toolbar" id="editorToolbar">
-            <button type="button" class="tool-tab active" data-panel="text">
-              <b>T</b><span>Teks</span>
+
+            <button
+              type="button"
+              class="tool-tab active"
+              data-panel="text"
+            >
+              <b>T</b>
+              <span>Teks</span>
             </button>
-            <button type="button" class="tool-tab" data-panel="font">
-              <b>Aa</b><span>Font</span>
+
+            <button
+              type="button"
+              class="tool-tab"
+              data-panel="font"
+            >
+              <b>Aa</b>
+              <span>Font</span>
             </button>
-            <button type="button" class="tool-tab" data-panel="filter">
-              <b>◐</b><span>Filter</span>
+
+            <button
+              type="button"
+              class="tool-tab"
+              data-panel="filter"
+            >
+              <b>◐</b>
+              <span>Filter</span>
             </button>
-            <button type="button" class="tool-tab" data-panel="adjust">
-              <b>☷</b><span>Sesuaikan</span>
+
+            <button
+              type="button"
+              class="tool-tab"
+              data-panel="adjust"
+            >
+              <b>☷</b>
+              <span>Sesuaikan</span>
             </button>
+
           </div>
 
-
           <!-- PANEL TEKS -->
-          <div class="settings-card settings-panel active" id="panel-text">
+          <div
+            class="settings-card settings-panel active"
+            id="panel-text"
+          >
 
             <div class="settings-title">
               <div>
@@ -272,11 +323,21 @@
               </div>
             </div>
 
-            <label class="control-label" for="editorQuote">Isi kutipan</label>
-            <textarea id="editorQuote" rows="3" maxlength="500"></textarea>
+            <label class="control-label" for="editorQuote">
+              Isi kutipan
+            </label>
+
+            <textarea
+              id="editorQuote"
+              rows="3"
+              maxlength="500"
+            ></textarea>
 
             <div class="control-group">
-              <label class="control-label" for="textColor">Warna teks</label>
+              <label class="control-label" for="textColor">
+                Warna teks
+              </label>
+
               <div class="color-row">
                 <select id="textColor">
                   <option value="#ffffff">Putih</option>
@@ -288,50 +349,117 @@
                   <option value="#d5c4f1">Ungu</option>
                   <option value="#111111">Hitam</option>
                 </select>
-                <input type="color" id="customTextColor" value="#ffffff" aria-label="Warna khusus">
+
+                <input
+                  type="color"
+                  id="customTextColor"
+                  value="#ffffff"
+                  aria-label="Warna khusus"
+                >
               </div>
             </div>
 
             <div class="control-group">
               <div class="range-heading">
-                <label class="control-label" for="textSize">Ukuran teks</label>
+                <label class="control-label" for="textSize">
+                  Ukuran teks
+                </label>
                 <output id="textSizeValue">32</output>
               </div>
-              <input type="range" id="textSize" min="0" max="120" step="1" value="32">
-              <small class="hint">0 = sembunyikan teks · 1–120 = ukuran teks</small>
+
+              <input
+                type="range"
+                id="textSize"
+                min="0"
+                max="120"
+                step="1"
+                value="32"
+              >
+
+              <small class="hint">
+                0 = sembunyikan teks · 1–120 = ukuran teks
+              </small>
             </div>
 
             <div class="control-group">
               <label class="control-label">Posisi teks</label>
+
               <div class="position-options">
-                <button type="button" class="position-button" data-position="top">Atas</button>
-                <button type="button" class="position-button active" data-position="center">Tengah</button>
-                <button type="button" class="position-button" data-position="bottom">Bawah</button>
+                <button
+                  type="button"
+                  class="position-button"
+                  data-position="top"
+                >Atas</button>
+
+                <button
+                  type="button"
+                  class="position-button active"
+                  data-position="center"
+                >Tengah</button>
+
+                <button
+                  type="button"
+                  class="position-button"
+                  data-position="bottom"
+                >Bawah</button>
               </div>
             </div>
 
             <div class="control-group">
               <div class="range-heading">
-                <label class="control-label" for="textOffset">Posisi vertikal</label>
+                <label class="control-label" for="textOffset">
+                  Posisi vertikal
+                </label>
                 <output id="textOffsetValue">0%</output>
               </div>
-              <input type="range" id="textOffset" min="-100" max="100" value="0">
+
+              <input
+                type="range"
+                id="textOffset"
+                min="-100"
+                max="100"
+                value="0"
+              >
             </div>
 
             <div class="control-group">
               <div class="range-heading">
-                <label class="control-label" for="textOffsetX">Posisi horizontal</label>
+                <label class="control-label" for="textOffsetX">
+                  Posisi horizontal
+                </label>
                 <output id="textOffsetXValue">0%</output>
               </div>
-              <input type="range" id="textOffsetX" min="-35" max="35" value="0">
+
+              <input
+                type="range"
+                id="textOffsetX"
+                min="-35"
+                max="35"
+                value="0"
+              >
             </div>
 
             <div class="control-group">
               <label class="control-label">Perataan teks</label>
+
               <div class="alignment-options">
-                <button type="button" class="align-button" data-align="left">Kiri</button>
-                <button type="button" class="align-button active" data-align="center">Tengah</button>
-                <button type="button" class="align-button" data-align="right">Kanan</button>
+                <button
+                  type="button"
+                  class="align-button"
+                  data-align="left"
+                >Kiri</button>
+
+                <button
+                  type="button"
+                  class="align-button active"
+                  data-align="center"
+                >Tengah</button>
+
+                <button
+                  type="button"
+                  class="align-button"
+                  data-align="right"
+                >Kanan</button>
               </div>
             </div>
 
@@ -341,6 +469,7 @@
                   <strong>Rapikan otomatis</strong>
                   <small>Sesuaikan teks agar tidak terpotong</small>
                 </span>
+
                 <input type="checkbox" id="autoFit" checked>
                 <i class="switch"></i>
               </label>
@@ -348,43 +477,64 @@
 
             <div class="control-group">
               <div class="range-heading">
-                <label class="control-label" for="paragraphGap">Jarak paragraf</label>
+                <label class="control-label" for="paragraphGap">
+                  Jarak paragraf
+                </label>
                 <output id="paragraphGapValue">12</output>
               </div>
-              <input type="range" id="paragraphGap" min="0" max="40" value="12">
+
+              <input
+                type="range"
+                id="paragraphGap"
+                min="0"
+                max="40"
+                value="12"
+              >
             </div>
 
             <div class="settings-divider"></div>
 
             <div class="settings-title">
               <div>
-                <strong>Efek belakang teks</strong>
+                <strong>Efek latar teks</strong>
                 <span>Tambahkan latar gelap transparan</span>
               </div>
             </div>
 
             <label class="switch-row">
               <span>
-                <strong>Blur latar teks</strong>
-                <small>Aktifkan atau matikan efek</small>
+                <strong>Aktifkan efek latar</strong>
+                <small>Tampilkan latar di belakang tulisan</small>
               </span>
+
               <input type="checkbox" id="blurEnabled">
               <i class="switch"></i>
             </label>
 
             <div class="control-group" id="blurStrengthGroup">
               <div class="range-heading">
-                <label class="control-label" for="blurStrength">Kekuatan efek</label>
+                <label class="control-label" for="blurStrength">
+                  Kekuatan efek
+                </label>
                 <output id="blurStrengthValue">8</output>
               </div>
-              <input type="range" id="blurStrength" min="0" max="24" value="8">
+
+              <input
+                type="range"
+                id="blurStrength"
+                min="0"
+                max="24"
+                value="8"
+              >
             </div>
 
           </div>
 
-
           <!-- PANEL FONT -->
-          <div class="settings-card settings-panel" id="panel-font">
+          <div
+            class="settings-card settings-panel"
+            id="panel-font"
+          >
 
             <div class="settings-title">
               <div>
@@ -394,37 +544,87 @@
             </div>
 
             <div class="font-grid">
-              <button class="font-option active" data-font="serif" type="button">
-                <strong class="font-serif">Aa</strong><span>Serif</span>
-              </button>
-              <button class="font-option" data-font="clean" type="button">
-                <strong class="font-clean">Aa</strong><span>Clean</span>
-              </button>
-              <button class="font-option" data-font="bold" type="button">
-                <strong class="font-bold">Aa</strong><span>Bold</span>
-              </button>
-              <button class="font-option" data-font="soft" type="button">
-                <strong class="font-soft">Aa</strong><span>Soft</span>
-              </button>
-              <button class="font-option" data-font="classic" type="button">
-                <strong class="font-classic">Aa</strong><span>Classic</span>
-              </button>
-              <button class="font-option" data-font="modern" type="button">
-                <strong class="font-modern">Aa</strong><span>Modern</span>
-              </button>
-              <button class="font-option" data-font="typewriter" type="button">
-                <strong class="font-typewriter">Aa</strong><span>Typewriter</span>
-              </button>
-              <button class="font-option" data-font="editorial" type="button">
-                <strong class="font-editorial">Aa</strong><span>Editorial</span>
-              </button>
-            </div>
 
+              <button
+                class="font-option active"
+                data-font="serif"
+                type="button"
+              >
+                <strong class="font-serif">Aa</strong>
+                <span>Serif</span>
+              </button>
+
+              <button
+                class="font-option"
+                data-font="clean"
+                type="button"
+              >
+                <strong class="font-clean">Aa</strong>
+                <span>Clean</span>
+              </button>
+
+              <button
+                class="font-option"
+                data-font="bold"
+                type="button"
+              >
+                <strong class="font-bold">Aa</strong>
+                <span>Bold</span>
+              </button>
+
+              <button
+                class="font-option"
+                data-font="soft"
+                type="button"
+              >
+                <strong class="font-soft">Aa</strong>
+                <span>Soft</span>
+              </button>
+
+              <button
+                class="font-option"
+                data-font="classic"
+                type="button"
+              >
+                <strong class="font-classic">Aa</strong>
+                <span>Classic</span>
+              </button>
+
+              <button
+                class="font-option"
+                data-font="modern"
+                type="button"
+              >
+                <strong class="font-modern">Aa</strong>
+                <span>Modern</span>
+              </button>
+
+              <button
+                class="font-option"
+                data-font="typewriter"
+                type="button"
+              >
+                <strong class="font-typewriter">Aa</strong>
+                <span>Typewriter</span>
+              </button>
+
+              <button
+                class="font-option"
+                data-font="editorial"
+                type="button"
+              >
+                <strong class="font-editorial">Aa</strong>
+                <span>Editorial</span>
+              </button>
+
+            </div>
           </div>
 
-
           <!-- PANEL FILTER -->
-          <div class="settings-card settings-panel" id="panel-filter">
+          <div
+            class="settings-card settings-panel"
+            id="panel-filter"
+          >
 
             <div class="settings-title">
               <div>
@@ -434,40 +634,96 @@
             </div>
 
             <div class="filter-grid">
-              <button class="filter-option active" data-filter="normal" type="button">
-                <i class="filter-thumb filter-normal"></i><strong>Original</strong>
-              </button>
-              <button class="filter-option" data-filter="cinematic" type="button">
-                <i class="filter-thumb filter-cinematic"></i><strong>Cinematic</strong>
-              </button>
-              <button class="filter-option" data-filter="blue" type="button">
-                <i class="filter-thumb filter-blue"></i><strong>Blue</strong>
-              </button>
-              <button class="filter-option" data-filter="warm" type="button">
-                <i class="filter-thumb filter-warm"></i><strong>Warm</strong>
-              </button>
-              <button class="filter-option" data-filter="mono" type="button">
-                <i class="filter-thumb filter-mono"></i><strong>Mono</strong>
-              </button>
-              <button class="filter-option" data-filter="soft" type="button">
-                <i class="filter-thumb filter-soft"></i><strong>Soft Film</strong>
-              </button>
-              <button class="filter-option" data-filter="deep" type="button">
-                <i class="filter-thumb filter-deep"></i><strong>Deep</strong>
-              </button>
-              <button class="filter-option" data-filter="golden" type="button">
-                <i class="filter-thumb filter-golden"></i><strong>Golden</strong>
-              </button>
-              <button class="filter-option" data-filter="night" type="button">
-                <i class="filter-thumb filter-night"></i><strong>Night</strong>
-              </button>
-            </div>
 
+              <button
+                class="filter-option active"
+                data-filter="normal"
+                type="button"
+              >
+                <i class="filter-thumb filter-normal"></i>
+                <strong>Original</strong>
+              </button>
+
+              <button
+                class="filter-option"
+                data-filter="cinematic"
+                type="button"
+              >
+                <i class="filter-thumb filter-cinematic"></i>
+                <strong>Cinematic</strong>
+              </button>
+
+              <button
+                class="filter-option"
+                data-filter="blue"
+                type="button"
+              >
+                <i class="filter-thumb filter-blue"></i>
+                <strong>Blue</strong>
+              </button>
+
+              <button
+                class="filter-option"
+                data-filter="warm"
+                type="button"
+              >
+                <i class="filter-thumb filter-warm"></i>
+                <strong>Warm</strong>
+              </button>
+
+              <button
+                class="filter-option"
+                data-filter="mono"
+                type="button"
+              >
+                <i class="filter-thumb filter-mono"></i>
+                <strong>Mono</strong>
+              </button>
+
+              <button
+                class="filter-option"
+                data-filter="soft"
+                type="button"
+              >
+                <i class="filter-thumb filter-soft"></i>
+                <strong>Soft Film</strong>
+              </button>
+
+              <button
+                class="filter-option"
+                data-filter="deep"
+                type="button"
+              >
+                <i class="filter-thumb filter-deep"></i>
+                <strong>Deep</strong>
+              </button>
+
+              <button
+                class="filter-option"
+                data-filter="golden"
+                type="button"
+              >
+                <i class="filter-thumb filter-golden"></i>
+                <strong>Golden</strong>
+              </button>
+
+              <button
+                class="filter-option"
+                data-filter="night"
+                type="button"
+              >
+                <i class="filter-thumb filter-night"></i>
+                <strong>Night</strong>
+              </button>
+
+            </div>
           </div>
 
-
           <!-- PANEL PENYESUAIAN -->
-          <div class="settings-card settings-panel" id="panel-adjust">
+          <div
+            class="settings-card settings-panel"
+            id="panel-adjust"
+          >
 
             <div class="settings-title">
               <div>
@@ -476,51 +732,99 @@
               </div>
             </div>
 
-            <button type="button" class="secondary-button full-button" id="autoAdjust">
+            <button
+              type="button"
+              class="secondary-button full-button"
+              id="autoAdjust"
+            >
               ✦ Sesuaikan otomatis
             </button>
 
             <div class="control-group">
               <div class="range-heading">
-                <label class="control-label" for="brightness">Brightness</label>
+                <label class="control-label" for="brightness">
+                  Brightness
+                </label>
                 <output id="brightnessValue">100%</output>
               </div>
-              <input type="range" id="brightness" min="50" max="150" value="100">
+
+              <input
+                type="range"
+                id="brightness"
+                min="50"
+                max="150"
+                value="100"
+              >
             </div>
 
             <div class="control-group">
               <div class="range-heading">
-                <label class="control-label" for="contrast">Contrast</label>
+                <label class="control-label" for="contrast">
+                  Contrast
+                </label>
                 <output id="contrastValue">100%</output>
               </div>
-              <input type="range" id="contrast" min="50" max="150" value="100">
+
+              <input
+                type="range"
+                id="contrast"
+                min="50"
+                max="150"
+                value="100"
+              >
             </div>
 
             <div class="control-group">
               <div class="range-heading">
-                <label class="control-label" for="saturation">Saturation</label>
+                <label class="control-label" for="saturation">
+                  Saturation
+                </label>
                 <output id="saturationValue">100%</output>
               </div>
-              <input type="range" id="saturation" min="0" max="200" value="100">
+
+              <input
+                type="range"
+                id="saturation"
+                min="0"
+                max="200"
+                value="100"
+              >
             </div>
 
             <div class="control-group">
               <div class="range-heading">
-                <label class="control-label" for="temperature">Temperature</label>
+                <label class="control-label" for="temperature">
+                  Temperature
+                </label>
                 <output id="temperatureValue">0</output>
               </div>
-              <input type="range" id="temperature" min="-50" max="50" value="0">
+
+              <input
+                type="range"
+                id="temperature"
+                min="-50"
+                max="50"
+                value="0"
+              >
             </div>
 
-            <button type="button" class="text-button reset-adjustments" id="resetAdjustments">
+            <button
+              type="button"
+              class="text-button reset-adjustments"
+              id="resetAdjustments"
+            >
               Reset penyesuaian
             </button>
 
           </div>
 
-
+          <!-- LANJUT EKSPOR -->
           <div class="editor-bottom">
-            <button type="button" class="primary-button full-button" id="continueToExport">
+            <button
+              type="button"
+              class="primary-button full-button"
+              id="continueToExport"
+            >
               Lanjut Ekspor <span>→</span>
             </button>
           </div>
@@ -528,7 +832,6 @@
         </div>
       </div>
     </section>
-
 
     <!-- HALAMAN EKSPOR -->
     <section class="stage export-stage" data-step="3">
@@ -562,7 +865,10 @@
             <button type="button" data-duration="20">20 detik</button>
           </div>
 
-          <label class="control-label custom-duration-label" for="customDuration">
+          <label
+            class="control-label custom-duration-label"
+            for="customDuration"
+          >
             Atur durasi sendiri
           </label>
 
@@ -586,7 +892,10 @@
 
         <!-- RESOLUSI -->
         <div class="control-group">
-          <label class="control-label" for="resolution">Resolusi video</label>
+          <label class="control-label" for="resolution">
+            Resolusi video
+          </label>
+
           <select id="resolution">
             <option value="1080">1080p — Full HD</option>
             <option value="720">720p — HD</option>
@@ -598,8 +907,14 @@
           <label class="control-label">Audio video</label>
 
           <div class="audio-options">
+
             <label class="audio-option active">
-              <input type="radio" name="audioMode" value="original" checked>
+              <input
+                type="radio"
+                name="audioMode"
+                value="original"
+                checked
+              >
               <span>
                 <strong>Audio asli</strong>
                 <small>Pertahankan suara video</small>
@@ -607,12 +922,17 @@
             </label>
 
             <label class="audio-option">
-              <input type="radio" name="audioMode" value="mute">
+              <input
+                type="radio"
+                name="audioMode"
+                value="mute"
+              >
               <span>
                 <strong>Tanpa audio</strong>
                 <small>Ekspor video tanpa suara</small>
               </span>
             </label>
+
           </div>
 
           <small class="hint" id="photoAudioHint">
@@ -626,6 +946,7 @@
             <span id="progressLabel">Menyiapkan media...</span>
             <strong id="progressPercent">0%</strong>
           </div>
+
           <div class="progress-track">
             <div class="progress-bar" id="progressBar"></div>
           </div>
@@ -642,7 +963,11 @@
 
         <div class="export-error" id="exportError"></div>
 
-        <button type="button" class="primary-button full-button" id="exportButton">
+        <button
+          type="button"
+          class="primary-button full-button"
+          id="exportButton"
+        >
           <span>Ekspor Video</span>
           <span>↗</span>
         </button>
@@ -656,7 +981,11 @@
           Simpan Video
         </a>
 
-        <button type="button" class="text-button full-button" id="backToEditor">
+        <button
+          type="button"
+          class="text-button full-button"
+          id="backToEditor"
+        >
           ← Kembali ke Editor
         </button>
 
