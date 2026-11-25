@@ -1,8 +1,9 @@
+
 import { FFmpeg } from "https://esm.sh/@ffmpeg/ffmpeg@0.12.6";
 import { fetchFile, toBlobURL } from "https://esm.sh/@ffmpeg/util@0.12.1";
 
 /* =========================================
-   QUIETFRAME — MEDIA QUOTE EDITOR
+   QUIETFRAME — MAIN JAVASCRIPT
 ========================================= */
 
 const $ = (selector) => document.querySelector(selector);
@@ -192,7 +193,10 @@ function showStage(step) {
 function updateCharacterCount() {
   const value = quoteInput?.value || "";
   setText(characterCount, `${value.length}/500`);
-  if (startEditing) startEditing.disabled = !state.file;
+
+  if (startEditing) {
+    startEditing.disabled = !state.file;
+  }
 }
 
 function fontString(size) {
@@ -202,6 +206,7 @@ function fontString(size) {
 
 function getFileExtension(file) {
   const fromName = file.name.split(".").pop()?.toLowerCase() || "";
+
   if (/^(mp4|mov|m4v|webm|3gp|jpg|jpeg|png|webp)$/.test(fromName)) {
     return fromName;
   }
@@ -220,13 +225,17 @@ function getFileExtension(file) {
 }
 
 function getMediaType(file, extension) {
-  if (file.type.startsWith("image/") ||
-      ["jpg", "jpeg", "png", "webp"].includes(extension)) {
+  if (
+    file.type.startsWith("image/") ||
+    ["jpg", "jpeg", "png", "webp"].includes(extension)
+  ) {
     return "image";
   }
 
-  if (file.type.startsWith("video/") ||
-      ["mp4", "mov", "m4v", "webm", "3gp"].includes(extension)) {
+  if (
+    file.type.startsWith("video/") ||
+    ["mp4", "mov", "m4v", "webm", "3gp"].includes(extension)
+  ) {
     return "video";
   }
 
@@ -234,7 +243,10 @@ function getMediaType(file, extension) {
 }
 
 function revokeMediaURL() {
-  if (state.mediaURL) URL.revokeObjectURL(state.mediaURL);
+  if (state.mediaURL) {
+    URL.revokeObjectURL(state.mediaURL);
+  }
+
   state.mediaURL = null;
 }
 
@@ -242,7 +254,9 @@ function revokeMediaURL() {
    MEDIA UPLOAD
 ========================================= */
 
-uploadButton?.addEventListener("click", () => videoInput?.click());
+uploadButton?.addEventListener("click", () => {
+  videoInput?.click();
+});
 
 videoInput?.addEventListener("change", (event) => {
   const file = event.target.files?.[0];
@@ -251,7 +265,7 @@ videoInput?.addEventListener("change", (event) => {
   const extension = getFileExtension(file);
   const mediaType = getMediaType(file, extension);
 
-  if (!mediaType) {
+  if (!mediaType || !extension) {
     alert("Format tidak didukung. Gunakan MP4, MOV, WEBM, JPG, PNG, atau WEBP.");
     videoInput.value = "";
     return;
@@ -286,17 +300,25 @@ videoInput?.addEventListener("change", (event) => {
       state.sourceDuration = Number.isFinite(previewVideo.duration)
         ? previewVideo.duration
         : null;
+
       updateDurationHint();
     };
 
     previewPlay.hidden = false;
-    if (audioGroup) audioGroup.style.display = "";
+
+    if (audioGroup) {
+      audioGroup.style.display = "";
+    }
   } else {
     previewImage.src = state.mediaURL;
     previewImage.style.display = "block";
 
     previewPlay.hidden = true;
-    if (audioGroup) audioGroup.style.display = "none";
+
+    if (audioGroup) {
+      audioGroup.style.display = "none";
+    }
+
     state.sourceDuration = null;
   }
 
@@ -309,6 +331,7 @@ videoInput?.addEventListener("change", (event) => {
 
   updateCharacterCount();
   updateDurationHint();
+  updateMediaAppearance();
 });
 
 removeVideo?.addEventListener("click", () => {
@@ -338,11 +361,9 @@ removeVideo?.addEventListener("click", () => {
   setText(fileTypeIcon, "MEDIA");
 
   if (audioGroup) audioGroup.style.display = "";
-  updateCharacterCount();
 
-  if (durationHint) {
-    durationHint.textContent = "Pilih preset atau isi durasi sendiri.";
-  }
+  updateCharacterCount();
+  updateDurationHint();
 });
 
 /* =========================================
@@ -361,7 +382,10 @@ startEditing?.addEventListener("click", () => {
   }
 
   state.text = quoteInput?.value || "";
-  if (editorQuote) editorQuote.value = state.text;
+
+  if (editorQuote) {
+    editorQuote.value = state.text;
+  }
 
   updateQuotePreview();
   updateMediaAppearance();
@@ -380,6 +404,7 @@ backToUpload?.addEventListener("click", () => {
 
 continueToExport?.addEventListener("click", () => {
   state.text = editorQuote?.value ?? state.text;
+
   updateQuotePreview();
   updateDurationHint();
 
@@ -390,6 +415,7 @@ continueToExport?.addEventListener("click", () => {
 
 backToEditor?.addEventListener("click", () => {
   showStage(2);
+
   if (state.mediaType === "video") {
     previewVideo?.play().catch(() => {});
   }
@@ -415,8 +441,13 @@ previewPlay?.addEventListener("click", async () => {
   }
 });
 
-previewVideo?.addEventListener("play", () => setText(playIcon, "Ⅱ"));
-previewVideo?.addEventListener("pause", () => setText(playIcon, "▶"));
+previewVideo?.addEventListener("play", () => {
+  setText(playIcon, "Ⅱ");
+});
+
+previewVideo?.addEventListener("pause", () => {
+  setText(playIcon, "▶");
+});
 
 /* =========================================
    TIKTOK UI
@@ -498,14 +529,17 @@ function wrapText(context, text, maxWidth) {
 function getFittedFontSize(maxWidth, maxHeight, baseSize, gap) {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
+
   if (!context) return baseSize;
 
   let size = Math.max(1, baseSize);
 
   while (size > 1) {
     context.font = fontString(size);
+
     const lines = wrapText(context, state.text, maxWidth);
     const paragraphCount = state.text.split("\n").length;
+
     const height =
       lines.length * size * 1.25 +
       Math.max(0, paragraphCount - 1) * gap;
@@ -529,6 +563,7 @@ function applyPreviewAutoFit() {
 
   const width = previewScreen.clientWidth;
   const height = previewScreen.clientHeight;
+
   if (!width || !height) return;
 
   if (!state.autoFit) {
@@ -550,8 +585,8 @@ function updateQuotePreview() {
   if (!previewQuote || !quotePanel || !quotePanelInner) return;
 
   state.text = editorQuote?.value ?? state.text;
-  previewQuote.textContent = state.text;
 
+  previewQuote.textContent = state.text;
   previewQuote.style.color = state.textColor;
   previewQuote.style.fontFamily = FONT_MAP[state.font] || FONT_MAP.serif;
   previewQuote.style.fontSize = `${state.textSize}px`;
@@ -565,6 +600,7 @@ function updateQuotePreview() {
     "position-center",
     "position-bottom"
   );
+
   quotePanel.classList.add(`position-${state.position}`);
 
   const screenHeight = previewScreen?.clientHeight || 0;
@@ -573,11 +609,20 @@ function updateQuotePreview() {
     "--quote-offset",
     `${(state.offset / 100) * screenHeight * 0.35}px`
   );
+
   quotePanel.style.setProperty("--quote-offset-x", `${state.offsetX}%`);
 
-  quotePanelInner.style.setProperty("--paragraph-gap", `${state.paragraphGap}px`);
+  quotePanelInner.style.setProperty(
+    "--paragraph-gap",
+    `${state.paragraphGap}px`
+  );
+
   quotePanelInner.classList.toggle("blur-active", state.blurEnabled);
-  quotePanelInner.style.setProperty("--quote-blur", `${state.blurStrength}px`);
+
+  quotePanelInner.style.setProperty(
+    "--quote-blur",
+    `${state.blurStrength}px`
+  );
 
   applyPreviewAutoFit();
 }
@@ -612,6 +657,7 @@ editorQuote?.addEventListener("input", updateQuotePreview);
 ].forEach(([inputId, outputId, update]) => {
   const input = $(`#${inputId}`);
   const output = $(`#${outputId}`);
+
   if (!input) return;
 
   input.addEventListener("input", () => {
@@ -626,13 +672,21 @@ editorQuote?.addEventListener("input", updateQuotePreview);
 
 textColor?.addEventListener("change", () => {
   state.textColor = textColor.value;
-  if (customTextColor) customTextColor.value = textColor.value;
+
+  if (customTextColor) {
+    customTextColor.value = textColor.value;
+  }
+
   updateQuotePreview();
 });
 
 customTextColor?.addEventListener("input", () => {
   state.textColor = customTextColor.value;
-  if (textColor) textColor.value = customTextColor.value;
+
+  if (textColor) {
+    textColor.value = customTextColor.value;
+  }
+
   updateQuotePreview();
 });
 
@@ -692,12 +746,15 @@ if (quotePanel && previewScreen) {
     if (!state.text.trim() || state.textSize === 0) return;
 
     dragging = true;
+
     startX = event.clientX;
     startY = event.clientY;
+
     initialX = state.offsetX;
     initialY = state.offset;
 
     quotePanel.setPointerCapture?.(event.pointerId);
+
     guideVertical?.classList.add("visible");
     guideHorizontal?.classList.add("visible");
   });
@@ -706,10 +763,14 @@ if (quotePanel && previewScreen) {
     if (!dragging) return;
 
     const rect = previewScreen.getBoundingClientRect();
+
     if (!rect.width || !rect.height) return;
 
-    let nextX = initialX + ((event.clientX - startX) / rect.width) * 100;
-    let nextY = initialY + ((event.clientY - startY) / (rect.height * 0.35)) * 100;
+    let nextX =
+      initialX + ((event.clientX - startX) / rect.width) * 100;
+
+    let nextY =
+      initialY + ((event.clientY - startY) / (rect.height * 0.35)) * 100;
 
     if (Math.abs(nextX) < 2.5) nextX = 0;
     if (Math.abs(nextY) < 2.5) nextY = 0;
@@ -728,6 +789,7 @@ if (quotePanel && previewScreen) {
 
   const stopDragging = () => {
     dragging = false;
+
     guideVertical?.classList.remove("visible");
     guideHorizontal?.classList.remove("visible");
   };
@@ -754,8 +816,32 @@ $$(".font-option").forEach((button) => {
 });
 
 /* =========================================
-   FILTER SELECTION
+   FILTERS
 ========================================= */
+
+function updateMediaAppearance() {
+  const filter = FILTER_PREVIEW[state.filter] || "";
+
+  const temperature = state.temperature
+    ? `sepia(${Math.abs(state.temperature) / 180}) hue-rotate(${state.temperature * 0.35}deg)`
+    : "";
+
+  const styleFilter = [
+    `brightness(${state.brightness}%)`,
+    `contrast(${state.contrast}%)`,
+    `saturate(${state.saturation}%)`,
+    filter,
+    temperature
+  ].filter(Boolean).join(" ");
+
+  if (previewVideo) {
+    previewVideo.style.filter = styleFilter;
+  }
+
+  if (previewImage) {
+    previewImage.style.filter = styleFilter;
+  }
+}
 
 $$(".filter-option").forEach((button) => {
   button.addEventListener("click", () => {
@@ -770,26 +856,8 @@ $$(".filter-option").forEach((button) => {
 });
 
 /* =========================================
-   MEDIA APPEARANCE
+   IMAGE ADJUSTMENTS
 ========================================= */
-
-function updateMediaAppearance() {
-  const filter = FILTER_PREVIEW[state.filter] || "";
-  const temperature = state.temperature
-    ? `sepia(${Math.abs(state.temperature) / 180}) hue-rotate(${state.temperature * 0.35}deg)`
-    : "";
-
-  const styleFilter = [
-    `brightness(${state.brightness}%)`,
-    `contrast(${state.contrast}%)`,
-    `saturate(${state.saturation}%)`,
-    filter,
-    temperature
-  ].filter(Boolean).join(" ");
-
-  if (previewVideo) previewVideo.style.filter = styleFilter;
-  if (previewImage) previewImage.style.filter = styleFilter;
-}
 
 [
   ["brightness", "brightnessValue", "brightness", "%"],
@@ -798,11 +866,14 @@ function updateMediaAppearance() {
   ["temperature", "temperatureValue", "temperature", ""]
 ].forEach(([id, outputId, key, suffix]) => {
   const input = $(`#${id}`);
+
   if (!input) return;
 
   input.addEventListener("input", () => {
     state[key] = Number(input.value);
+
     setText($(`#${outputId}`), `${input.value}${suffix}`);
+
     updateMediaAppearance();
   });
 });
@@ -820,7 +891,9 @@ $("#autoAdjust")?.addEventListener("click", () => {
     ["temperature", 5, "5"]
   ].forEach(([id, value, label]) => {
     const input = $(`#${id}`);
+
     if (input) input.value = value;
+
     setText($(`#${id}Value`), label);
   });
 
@@ -841,7 +914,9 @@ $("#resetAdjustments")?.addEventListener("click", () => {
     ["temperature", 0, "0"]
   ].forEach(([id, value, label]) => {
     const input = $(`#${id}`);
+
     if (input) input.value = value;
+
     setText($(`#${id}Value`), label);
   });
 
@@ -859,23 +934,27 @@ $("#resetAdjustments")?.addEventListener("click", () => {
 function setDuration(value, updateInput = true) {
   const duration = Number(value);
 
-  if (!Number.isFinite(duration) || duration < 1 || duration > 3600) {
+  if (
+    !Number.isFinite(duration) ||
+    duration < 1 ||
+    duration > 3600
+  ) {
     return false;
   }
 
-  state.duration = duration;
+  state.duration = Math.round(duration);
 
   $$("[data-duration]").forEach((button) => {
     button.classList.toggle(
       "active",
-      Number(button.dataset.duration) === duration
+      Number(button.dataset.duration) === state.duration
     );
   });
 
-  const isPreset = [12, 15, 17, 20].includes(duration);
+  const isPreset = [12, 15, 17, 20].includes(state.duration);
 
   if (customDuration && updateInput) {
-    customDuration.value = isPreset ? "" : String(duration);
+    customDuration.value = isPreset ? "" : String(state.duration);
   }
 
   updateDurationHint();
@@ -893,16 +972,27 @@ customDuration?.addEventListener("input", () => {
     $$("[data-duration]").forEach((button) => {
       button.classList.remove("active");
     });
+
     return;
   }
 
   const value = Number(customDuration.value);
-  if (!Number.isFinite(value) || value < 1 || value > 3600) return;
 
-  state.duration = value;
+  if (
+    !Number.isFinite(value) ||
+    value < 1 ||
+    value > 3600
+  ) {
+    return;
+  }
+
+  state.duration = Math.round(value);
 
   $$("[data-duration]").forEach((button) => {
-    button.classList.toggle("active", Number(button.dataset.duration) === value);
+    button.classList.toggle(
+      "active",
+      Number(button.dataset.duration) === state.duration
+    );
   });
 
   updateDurationHint();
@@ -913,7 +1003,11 @@ customDuration?.addEventListener("change", () => {
 
   const value = Number(customDuration.value);
 
-  if (!Number.isFinite(value) || value < 1 || value > 3600) {
+  if (
+    !Number.isFinite(value) ||
+    value < 1 ||
+    value > 3600
+  ) {
     customDuration.value = String(state.duration);
     showError("Durasi harus antara 1 sampai 3600 detik.");
     return;
@@ -921,6 +1015,7 @@ customDuration?.addEventListener("change", () => {
 
   state.duration = Math.round(value);
   customDuration.value = String(state.duration);
+
   updateDurationHint();
 });
 
@@ -935,6 +1030,7 @@ function updateDurationHint() {
   if (state.mediaType === "image") {
     durationHint.textContent =
       `Foto akan dijadikan video selama ${state.duration} detik.`;
+
     return;
   }
 
@@ -993,16 +1089,21 @@ function drawRoundedRect(context, x, y, width, height, radius) {
 
 function createTextOverlay(width, height) {
   const canvas = document.createElement("canvas");
+
   canvas.width = width;
   canvas.height = height;
 
   const context = canvas.getContext("2d");
+
   context.clearRect(0, 0, width, height);
 
-  if (!state.text.trim() || state.textSize === 0) return canvas;
+  if (!state.text.trim() || state.textSize === 0) {
+    return canvas;
+  }
 
   const previewWidth = previewScreen?.clientWidth || 300;
   const previewHeight = previewScreen?.clientHeight || previewWidth * 16 / 9;
+
   const scale = width / previewWidth;
   const safeWidth = width * 0.76;
   const safeHeight = height * 0.36;
@@ -1033,7 +1134,10 @@ function createTextOverlay(width, height) {
 
   paragraphLines.forEach((paragraph, index) => {
     totalHeight += Math.max(1, paragraph.length) * fontSize * 1.25;
-    if (index < paragraphLines.length - 1) totalHeight += paragraphSpacing;
+
+    if (index < paragraphLines.length - 1) {
+      totalHeight += paragraphSpacing;
+    }
   });
 
   if (state.autoFit && totalHeight > safeHeight) {
@@ -1051,7 +1155,10 @@ function createTextOverlay(width, height) {
 
       newLines.forEach((paragraph, index) => {
         totalHeight += Math.max(1, paragraph.length) * adjusted * 1.25;
-        if (index < newLines.length - 1) totalHeight += paragraphSpacing;
+
+        if (index < newLines.length - 1) {
+          totalHeight += paragraphSpacing;
+        }
       });
 
       paragraphLines.splice(0, paragraphLines.length, ...newLines);
@@ -1066,9 +1173,13 @@ function createTextOverlay(width, height) {
   const lineHeight = finalFontSize * 1.25;
 
   totalHeight = 0;
+
   paragraphLines.forEach((paragraph, index) => {
     totalHeight += Math.max(1, paragraph.length) * lineHeight;
-    if (index < paragraphLines.length - 1) totalHeight += paragraphSpacing;
+
+    if (index < paragraphLines.length - 1) {
+      totalHeight += paragraphSpacing;
+    }
   });
 
   let centerY = state.position === "top"
@@ -1091,23 +1202,39 @@ function createTextOverlay(width, height) {
     let widestLine = 0;
 
     paragraphLines.flat().forEach((line) => {
-      widestLine = Math.max(widestLine, context.measureText(line).width);
+      widestLine = Math.max(
+        widestLine,
+        context.measureText(line).width
+      );
     });
 
     const paddingX = finalFontSize * 0.55;
     const paddingY = finalFontSize * 0.32;
-    const boxWidth = Math.min(widestLine + paddingX * 2, width * 0.86);
+
+    const boxWidth = Math.min(
+      widestLine + paddingX * 2,
+      width * 0.86
+    );
+
     const boxHeight = totalHeight + paddingY * 2;
 
     let boxX = x - boxWidth / 2;
-    if (state.alignment === "left") boxX = x - paddingX;
-    if (state.alignment === "right") boxX = x - boxWidth + paddingX;
+
+    if (state.alignment === "left") {
+      boxX = x - paddingX;
+    }
+
+    if (state.alignment === "right") {
+      boxX = x - boxWidth + paddingX;
+    }
 
     const boxY = centerY - boxHeight / 2;
 
     context.save();
+
     context.fillStyle =
       `rgba(0,0,0,${clamp(state.blurStrength / 60, 0.03, 0.35)})`;
+
     drawRoundedRect(
       context,
       boxX,
@@ -1116,6 +1243,7 @@ function createTextOverlay(width, height) {
       boxHeight,
       finalFontSize * 0.35
     );
+
     context.fill();
     context.restore();
   }
@@ -1135,7 +1263,9 @@ function createTextOverlay(width, height) {
       y += lineHeight;
     });
 
-    if (index < paragraphLines.length - 1) y += paragraphSpacing;
+    if (index < paragraphLines.length - 1) {
+      y += paragraphSpacing;
+    }
   });
 
   return canvas;
@@ -1148,7 +1278,9 @@ function createTextOverlay(width, height) {
 async function loadFFmpeg() {
   if (state.ffmpegReady) return;
 
-  if (!state.ffmpeg) state.ffmpeg = new FFmpeg();
+  if (!state.ffmpeg) {
+    state.ffmpeg = new FFmpeg();
+  }
 
   const ffmpeg = state.ffmpeg;
 
@@ -1156,16 +1288,20 @@ async function loadFFmpeg() {
     if (!state.exporting) return;
 
     const percent = clamp(Math.round(progress * 100), 0, 99);
+
     setText(progressPercent, `${percent}%`);
 
-    if (progressBar) progressBar.style.width = `${percent}%`;
+    if (progressBar) {
+      progressBar.style.width = `${percent}%`;
+    }
   });
 
   ffmpeg.on("log", ({ message }) => {
     console.log("[QuietFrame FFmpeg]", message);
   });
 
-  const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
+  const baseURL =
+    "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
 
   await ffmpeg.load({
     coreURL: await toBlobURL(
@@ -1213,7 +1349,10 @@ function getFFmpegVideoFilter() {
 
   if (state.temperature !== 0) {
     const amount = state.temperature / 100;
-    filters.push(`colorbalance=rs=${amount}:bs=${-amount}`);
+
+    filters.push(
+      `colorbalance=rs=${amount}:bs=${-amount}`
+    );
   }
 
   return filters.join(",");
@@ -1222,7 +1361,10 @@ function getFFmpegVideoFilter() {
 function updateProgress(percent, label) {
   setText(progressPercent, `${percent}%`);
   setText(progressLabel, label);
-  if (progressBar) progressBar.style.width = `${percent}%`;
+
+  if (progressBar) {
+    progressBar.style.width = `${percent}%`;
+  }
 }
 
 /* =========================================
@@ -1235,15 +1377,19 @@ function validateExport() {
     return false;
   }
 
-  if (!Number.isFinite(state.duration) ||
-      state.duration < 1 ||
-      state.duration > 3600) {
+  if (
+    !Number.isFinite(state.duration) ||
+    state.duration < 1 ||
+    state.duration > 3600
+  ) {
     showError("Durasi harus antara 1 sampai 3600 detik.");
     return false;
   }
 
-  if (state.mediaType === "image" &&
-      !["jpg", "jpeg", "png", "webp"].includes(state.mediaExtension)) {
+  if (
+    state.mediaType === "image" &&
+    !["jpg", "jpeg", "png", "webp"].includes(state.mediaExtension)
+  ) {
     showError("Format foto ini belum didukung.");
     return false;
   }
@@ -1257,6 +1403,7 @@ function validateExport() {
 
 async function exportVideo() {
   if (state.exporting) return;
+
   clearExportMessages();
 
   if (!validateExport()) return;
@@ -1269,6 +1416,7 @@ async function exportVideo() {
   }
 
   exportProgress?.classList.add("visible");
+
   updateProgress(0, "Menyiapkan media...");
 
   const inputName = `quietframe-input.${state.mediaExtension}`;
@@ -1277,6 +1425,7 @@ async function exportVideo() {
 
   try {
     await loadFFmpeg();
+
     updateProgress(8, "Membaca media...");
 
     const ffmpeg = state.ffmpeg;
@@ -1287,10 +1436,15 @@ async function exportVideo() {
       } catch {}
     }
 
-    await ffmpeg.writeFile(inputName, await fetchFile(state.file));
+    await ffmpeg.writeFile(
+      inputName,
+      await fetchFile(state.file)
+    );
+
     updateProgress(20, "Menyiapkan teks...");
 
     const dimensions = getOutputDimensions();
+
     const overlayCanvas = createTextOverlay(
       dimensions.width,
       dimensions.height
@@ -1304,7 +1458,11 @@ async function exportVideo() {
       throw new Error("Gagal membuat lapisan teks.");
     }
 
-    await ffmpeg.writeFile(overlayName, await fetchFile(overlayBlob));
+    await ffmpeg.writeFile(
+      overlayName,
+      await fetchFile(overlayBlob)
+    );
+
     updateProgress(30, "Menyiapkan proses ekspor...");
 
     const selectedAudio =
@@ -1334,7 +1492,10 @@ async function exportVideo() {
       "-map", "[vout]"
     );
 
-    if (state.mediaType === "video" && selectedAudio === "original") {
+    if (
+      state.mediaType === "video" &&
+      selectedAudio === "original"
+    ) {
       command.push(
         "-map", "0:a?",
         "-c:a", "aac",
@@ -1368,9 +1529,16 @@ async function exportVideo() {
     updateProgress(94, "Menyiapkan hasil...");
 
     const outputData = await ffmpeg.readFile(outputName);
-    const outputBlob = new Blob([outputData], { type: "video/mp4" });
 
-    if (state.outputURL) URL.revokeObjectURL(state.outputURL);
+    const outputBlob = new Blob(
+      [outputData],
+      { type: "video/mp4" }
+    );
+
+    if (state.outputURL) {
+      URL.revokeObjectURL(state.outputURL);
+    }
+
     state.outputURL = URL.createObjectURL(outputBlob);
 
     if (downloadButton) {
@@ -1380,7 +1548,9 @@ async function exportVideo() {
     }
 
     updateProgress(100, "Video selesai dibuat.");
+
     exportResult?.classList.add("visible");
+
     setText(progressLabel, "Ekspor berhasil");
 
     for (const name of [inputName, overlayName, outputName]) {
@@ -1423,13 +1593,16 @@ let fullscreenButton = null;
 
 function createPreviewFullscreenButton() {
   const topline = $(".preview-topline");
+
   if (!topline || $("#previewFullscreen")) return;
 
   fullscreenButton = document.createElement("button");
+
   fullscreenButton.type = "button";
   fullscreenButton.id = "previewFullscreen";
   fullscreenButton.className = "preview-fullscreen-button";
   fullscreenButton.textContent = "Perbesar";
+
   fullscreenButton.setAttribute("aria-pressed", "false");
 
   fullscreenButton.addEventListener("click", () => {
@@ -1472,8 +1645,10 @@ function exitPreviewFullscreen() {
 }
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" &&
-      document.body.classList.contains("preview-expanded")) {
+  if (
+    event.key === "Escape" &&
+    document.body.classList.contains("preview-expanded")
+  ) {
     exitPreviewFullscreen();
   }
 });
@@ -1486,7 +1661,9 @@ createPreviewFullscreenButton();
 
 if ("ResizeObserver" in window && previewScreen) {
   const resizeObserver = new ResizeObserver(() => {
-    if (state.stage === 2) updateQuotePreview();
+    if (state.stage === 2) {
+      updateQuotePreview();
+    }
   });
 
   resizeObserver.observe(previewScreen);
@@ -1534,8 +1711,13 @@ function initialize() {
     customDuration.value = "";
   }
 
-  if (previewVideo) previewVideo.style.display = "none";
-  if (previewImage) previewImage.style.display = "none";
+  if (previewVideo) {
+    previewVideo.style.display = "none";
+  }
+
+  if (previewImage) {
+    previewImage.style.display = "none";
+  }
 }
 
 initialize();
