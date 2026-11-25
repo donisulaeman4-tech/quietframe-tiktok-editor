@@ -2,7 +2,7 @@ import { FFmpeg } from "https://esm.sh/@ffmpeg/ffmpeg@0.12.6";
 import { fetchFile, toBlobURL } from "https://esm.sh/@ffmpeg/util@0.12.1";
 
 /* =========================================
-   QUIETFRAME — VIDEO QUOTE EDITOR
+   QUIETFRAME — MEDIA QUOTE EDITOR
 ========================================= */
 
 const $ = (selector) => document.querySelector(selector);
@@ -10,8 +10,12 @@ const $$ = (selector) => [...document.querySelectorAll(selector)];
 
 const state = {
   file: null,
-  videoURL: null,
+  mediaType: null,
+  mediaExtension: "mp4",
+  mediaURL: null,
   outputURL: null,
+  sourceDuration: null,
+
   ffmpeg: null,
   ffmpegReady: false,
   exporting: false,
@@ -85,27 +89,32 @@ const uploadButton = $("#uploadButton");
 const selectedVideo = $("#selectedVideo");
 const videoFileName = $("#videoFileName");
 const videoFileSize = $("#videoFileSize");
+const fileTypeIcon = $("#fileTypeIcon");
 const removeVideo = $("#removeVideo");
 
 const quoteInput = $("#quoteInput");
 const editorQuote = $("#editorQuote");
 const characterCount = $("#characterCount");
-
 const startEditing = $("#startEditing");
+
 const backToUpload = $("#backToUpload");
 const continueToExport = $("#continueToExport");
 const backToEditor = $("#backToEditor");
 
 const previewVideo = $("#previewVideo");
+const previewImage = $("#previewImage");
 const previewScreen = $("#previewScreen");
 const previewQuote = $("#previewQuote");
 const quotePanel = $("#quotePanel");
 const quotePanelInner = $("#quotePanelInner");
-
 const previewPlay = $("#previewPlay");
 const playIcon = $("#playIcon");
+
 const toggleTikTokUI = $("#toggleTikTokUI");
 const mockTikTokUI = $("#mockTikTokUI");
+
+const guideVertical = $("#guideVertical");
+const guideHorizontal = $("#guideHorizontal");
 
 const textColor = $("#textColor");
 const customTextColor = $("#customTextColor");
@@ -126,6 +135,7 @@ const blurStrengthValue = $("#blurStrengthValue");
 
 const resolution = $("#resolution");
 const durationHint = $("#durationHint");
+const customDuration = $("#customDuration");
 
 const exportButton = $("#exportButton");
 const downloadButton = $("#downloadButton");
@@ -135,6 +145,7 @@ const progressPercent = $("#progressPercent");
 const progressBar = $("#progressBar");
 const exportResult = $("#exportResult");
 const exportError = $("#exportError");
+const audioGroup = $("#audioGroup");
 
 /* =========================================
    HELPERS
@@ -189,8 +200,46 @@ function fontString(size) {
   return `${weight}${size}px ${FONT_MAP[state.font] || FONT_MAP.serif}`;
 }
 
+function getFileExtension(file) {
+  const fromName = file.name.split(".").pop()?.toLowerCase() || "";
+  if (/^(mp4|mov|m4v|webm|3gp|jpg|jpeg|png|webp)$/.test(fromName)) {
+    return fromName;
+  }
+
+  const mimeMap = {
+    "video/mp4": "mp4",
+    "video/quicktime": "mov",
+    "video/webm": "webm",
+    "video/3gpp": "3gp",
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp"
+  };
+
+  return mimeMap[file.type] || "";
+}
+
+function getMediaType(file, extension) {
+  if (file.type.startsWith("image/") ||
+      ["jpg", "jpeg", "png", "webp"].includes(extension)) {
+    return "image";
+  }
+
+  if (file.type.startsWith("video/") ||
+      ["mp4", "mov", "m4v", "webm", "3gp"].includes(extension)) {
+    return "video";
+  }
+
+  return null;
+}
+
+function revokeMediaURL() {
+  if (state.mediaURL) URL.revokeObjectURL(state.mediaURL);
+  state.mediaURL = null;
+}
+
 /* =========================================
-   VIDEO UPLOAD
+   MEDIA UPLOAD
 ========================================= */
 
 uploadButton?.addEventListener("click", () => videoInput?.click());
@@ -199,24 +248,61 @@ videoInput?.addEventListener("change", (event) => {
   const file = event.target.files?.[0];
   if (!file) return;
 
-  if (!file.type.startsWith("video/")) {
-    alert("Silakan pilih file video yang valid.");
+  const extension = getFileExtension(file);
+  const mediaType = getMediaType(file, extension);
+
+  if (!mediaType) {
+    alert("Format tidak didukung. Gunakan MP4, MOV, WEBM, JPG, PNG, atau WEBP.");
     videoInput.value = "";
     return;
   }
 
-  if (state.videoURL) URL.revokeObjectURL(state.videoURL);
+  revokeMediaURL();
 
   state.file = file;
-  state.videoURL = URL.createObjectURL(file);
+  state.mediaType = mediaType;
+  state.mediaExtension = extension;
+  state.sourceDuration = null;
+  state.mediaURL = URL.createObjectURL(file);
 
   if (previewVideo) {
-    previewVideo.src = state.videoURL;
+    previewVideo.pause();
+    previewVideo.removeAttribute("src");
     previewVideo.load();
+    previewVideo.style.display = "none";
+  }
+
+  if (previewImage) {
+    previewImage.removeAttribute("src");
+    previewImage.style.display = "none";
+  }
+
+  if (mediaType === "video") {
+    previewVideo.src = state.mediaURL;
+    previewVideo.style.display = "block";
+    previewVideo.load();
+
+    previewVideo.onloadedmetadata = () => {
+      state.sourceDuration = Number.isFinite(previewVideo.duration)
+        ? previewVideo.duration
+        : null;
+      updateDurationHint();
+    };
+
+    previewPlay.hidden = false;
+    if (audioGroup) audioGroup.style.display = "";
+  } else {
+    previewImage.src = state.mediaURL;
+    previewImage.style.display = "block";
+
+    previewPlay.hidden = true;
+    if (audioGroup) audioGroup.style.display = "none";
+    state.sourceDuration = null;
   }
 
   setText(videoFileName, file.name);
   setText(videoFileSize, formatFileSize(file.size));
+  setText(fileTypeIcon, mediaType === "image" ? "FOTO" : "VIDEO");
 
   selectedVideo?.classList.add("visible");
   uploadButton?.classList.add("has-video");
@@ -226,27 +312,41 @@ videoInput?.addEventListener("change", (event) => {
 });
 
 removeVideo?.addEventListener("click", () => {
-  if (state.videoURL) URL.revokeObjectURL(state.videoURL);
+  revokeMediaURL();
 
   state.file = null;
-  state.videoURL = null;
+  state.mediaType = null;
+  state.sourceDuration = null;
 
+  previewVideo?.pause();
   previewVideo?.removeAttribute("src");
   previewVideo?.load();
+
+  previewImage?.removeAttribute("src");
+
+  if (previewVideo) previewVideo.style.display = "none";
+  if (previewImage) previewImage.style.display = "none";
+  if (previewPlay) previewPlay.hidden = false;
 
   if (videoInput) videoInput.value = "";
 
   selectedVideo?.classList.remove("visible");
   uploadButton?.classList.remove("has-video");
 
-  setText(videoFileName, "Video belum dipilih");
-  setText(videoFileSize, "Pilih video dari perangkat");
+  setText(videoFileName, "Media belum dipilih");
+  setText(videoFileSize, "Pilih video atau foto dari perangkat");
+  setText(fileTypeIcon, "MEDIA");
 
+  if (audioGroup) audioGroup.style.display = "";
   updateCharacterCount();
+
+  if (durationHint) {
+    durationHint.textContent = "Pilih preset atau isi durasi sendiri.";
+  }
 });
 
 /* =========================================
-   STAGE 1 & NAVIGATION
+   STAGE NAVIGATION
 ========================================= */
 
 quoteInput?.addEventListener("input", () => {
@@ -256,7 +356,7 @@ quoteInput?.addEventListener("input", () => {
 
 startEditing?.addEventListener("click", () => {
   if (!state.file) {
-    alert("Pilih video terlebih dahulu.");
+    alert("Pilih video atau foto terlebih dahulu.");
     return;
   }
 
@@ -264,13 +364,16 @@ startEditing?.addEventListener("click", () => {
   if (editorQuote) editorQuote.value = state.text;
 
   updateQuotePreview();
-  updateVideoAppearance();
+  updateMediaAppearance();
   showStage(2);
 
-  previewVideo?.play().catch(() => {});
+  if (state.mediaType === "video") {
+    previewVideo?.play().catch(() => {});
+  }
 });
 
 backToUpload?.addEventListener("click", () => {
+  exitPreviewFullscreen();
   showStage(1);
   previewVideo?.pause();
 });
@@ -287,7 +390,9 @@ continueToExport?.addEventListener("click", () => {
 
 backToEditor?.addEventListener("click", () => {
   showStage(2);
-  previewVideo?.play().catch(() => {});
+  if (state.mediaType === "video") {
+    previewVideo?.play().catch(() => {});
+  }
 });
 
 /* =========================================
@@ -295,7 +400,7 @@ backToEditor?.addEventListener("click", () => {
 ========================================= */
 
 previewPlay?.addEventListener("click", async () => {
-  if (!previewVideo) return;
+  if (!previewVideo || state.mediaType !== "video") return;
 
   if (previewVideo.paused) {
     try {
@@ -314,7 +419,7 @@ previewVideo?.addEventListener("play", () => setText(playIcon, "Ⅱ"));
 previewVideo?.addEventListener("pause", () => setText(playIcon, "▶"));
 
 /* =========================================
-   TIKTOK PREVIEW UI
+   TIKTOK UI
 ========================================= */
 
 toggleTikTokUI?.addEventListener("click", () => {
@@ -341,7 +446,7 @@ $$(".tool-tab").forEach((button) => {
 });
 
 /* =========================================
-   TEXT WRAPPING
+   TEXT WRAPPING & AUTO FIT
 ========================================= */
 
 function wrapText(context, text, maxWidth) {
@@ -366,11 +471,12 @@ function wrapText(context, text, maxWidth) {
         line = test;
       }
 
-      /* Pecah kata yang sangat panjang agar tidak keluar area */
       if (context.measureText(line).width > maxWidth) {
         let part = "";
+
         for (const char of line) {
           const candidate = part + char;
+
           if (context.measureText(candidate).width > maxWidth && part) {
             lines.push(part);
             part = char;
@@ -378,6 +484,7 @@ function wrapText(context, text, maxWidth) {
             part = candidate;
           }
         }
+
         line = part;
       }
     });
@@ -386,15 +493,6 @@ function wrapText(context, text, maxWidth) {
   });
 
   return lines;
-}
-
-/* =========================================
-   QUOTE PREVIEW & AUTO FIT
-========================================= */
-
-function getPreviewFontSize() {
-  if (!previewQuote) return state.textSize;
-  return Number.parseFloat(getComputedStyle(previewQuote).fontSize) || state.textSize;
 }
 
 function getFittedFontSize(maxWidth, maxHeight, baseSize, gap) {
@@ -470,17 +568,14 @@ function updateQuotePreview() {
   quotePanel.classList.add(`position-${state.position}`);
 
   const screenHeight = previewScreen?.clientHeight || 0;
+
   quotePanel.style.setProperty(
     "--quote-offset",
     `${(state.offset / 100) * screenHeight * 0.35}px`
   );
   quotePanel.style.setProperty("--quote-offset-x", `${state.offsetX}%`);
 
-  quotePanelInner.style.setProperty(
-    "--paragraph-gap",
-    `${state.paragraphGap}px`
-  );
-
+  quotePanelInner.style.setProperty("--paragraph-gap", `${state.paragraphGap}px`);
   quotePanelInner.classList.toggle("blur-active", state.blurEnabled);
   quotePanelInner.style.setProperty("--quote-blur", `${state.blurStrength}px`);
 
@@ -580,7 +675,7 @@ blurEnabled?.addEventListener("change", () => {
 });
 
 /* =========================================
-   DRAG TEXT DIRECTLY IN PREVIEW
+   DRAG TEXT + CENTER GUIDES + SNAP
 ========================================= */
 
 if (quotePanel && previewScreen) {
@@ -603,6 +698,8 @@ if (quotePanel && previewScreen) {
     initialY = state.offset;
 
     quotePanel.setPointerCapture?.(event.pointerId);
+    guideVertical?.classList.add("visible");
+    guideHorizontal?.classList.add("visible");
   });
 
   quotePanel.addEventListener("pointermove", (event) => {
@@ -611,17 +708,14 @@ if (quotePanel && previewScreen) {
     const rect = previewScreen.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
 
-    state.offsetX = clamp(
-      initialX + ((event.clientX - startX) / rect.width) * 100,
-      -35,
-      35
-    );
+    let nextX = initialX + ((event.clientX - startX) / rect.width) * 100;
+    let nextY = initialY + ((event.clientY - startY) / (rect.height * 0.35)) * 100;
 
-    state.offset = clamp(
-      initialY + ((event.clientY - startY) / (rect.height * 0.35)) * 100,
-      -100,
-      100
-    );
+    if (Math.abs(nextX) < 2.5) nextX = 0;
+    if (Math.abs(nextY) < 2.5) nextY = 0;
+
+    state.offsetX = clamp(nextX, -35, 35);
+    state.offset = clamp(nextY, -100, 100);
 
     if (textOffsetX) textOffsetX.value = state.offsetX;
     if (textOffset) textOffset.value = state.offset;
@@ -634,6 +728,8 @@ if (quotePanel && previewScreen) {
 
   const stopDragging = () => {
     dragging = false;
+    guideVertical?.classList.remove("visible");
+    guideHorizontal?.classList.remove("visible");
   };
 
   quotePanel.addEventListener("pointerup", stopDragging);
@@ -669,29 +765,30 @@ $$(".filter-option").forEach((button) => {
       item.classList.toggle("active", item === button);
     });
 
-    updateVideoAppearance();
+    updateMediaAppearance();
   });
 });
 
 /* =========================================
-   IMAGE ADJUSTMENTS
+   MEDIA APPEARANCE
 ========================================= */
 
-function updateVideoAppearance() {
-  if (!previewVideo) return;
-
+function updateMediaAppearance() {
   const filter = FILTER_PREVIEW[state.filter] || "";
   const temperature = state.temperature
     ? `sepia(${Math.abs(state.temperature) / 180}) hue-rotate(${state.temperature * 0.35}deg)`
     : "";
 
-  previewVideo.style.filter = [
+  const styleFilter = [
     `brightness(${state.brightness}%)`,
     `contrast(${state.contrast}%)`,
     `saturate(${state.saturation}%)`,
     filter,
     temperature
   ].filter(Boolean).join(" ");
+
+  if (previewVideo) previewVideo.style.filter = styleFilter;
+  if (previewImage) previewImage.style.filter = styleFilter;
 }
 
 [
@@ -706,7 +803,7 @@ function updateVideoAppearance() {
   input.addEventListener("input", () => {
     state[key] = Number(input.value);
     setText($(`#${outputId}`), `${input.value}${suffix}`);
-    updateVideoAppearance();
+    updateMediaAppearance();
   });
 });
 
@@ -727,7 +824,7 @@ $("#autoAdjust")?.addEventListener("click", () => {
     setText($(`#${id}Value`), label);
   });
 
-  updateVideoAppearance();
+  updateMediaAppearance();
 });
 
 $("#resetAdjustments")?.addEventListener("click", () => {
@@ -752,49 +849,107 @@ $("#resetAdjustments")?.addEventListener("click", () => {
     button.classList.toggle("active", button.dataset.filter === "normal");
   });
 
-  updateVideoAppearance();
+  updateMediaAppearance();
 });
 
 /* =========================================
    EXPORT DURATION
 ========================================= */
 
+function setDuration(value, updateInput = true) {
+  const duration = Number(value);
+
+  if (!Number.isFinite(duration) || duration < 1 || duration > 3600) {
+    return false;
+  }
+
+  state.duration = duration;
+
+  $$("[data-duration]").forEach((button) => {
+    button.classList.toggle(
+      "active",
+      Number(button.dataset.duration) === duration
+    );
+  });
+
+  const isPreset = [12, 15, 17, 20].includes(duration);
+
+  if (customDuration && updateInput) {
+    customDuration.value = isPreset ? "" : String(duration);
+  }
+
+  updateDurationHint();
+  return true;
+}
+
 $$("[data-duration]").forEach((button) => {
   button.addEventListener("click", () => {
-    state.duration = Number(button.dataset.duration);
-
-    $$("[data-duration]").forEach((item) => {
-      item.classList.toggle("active", item === button);
-    });
-
-    updateDurationHint();
+    setDuration(button.dataset.duration);
   });
 });
 
+customDuration?.addEventListener("input", () => {
+  if (customDuration.value.trim() === "") {
+    $$("[data-duration]").forEach((button) => {
+      button.classList.remove("active");
+    });
+    return;
+  }
+
+  const value = Number(customDuration.value);
+  if (!Number.isFinite(value) || value < 1 || value > 3600) return;
+
+  state.duration = value;
+
+  $$("[data-duration]").forEach((button) => {
+    button.classList.toggle("active", Number(button.dataset.duration) === value);
+  });
+
+  updateDurationHint();
+});
+
+customDuration?.addEventListener("change", () => {
+  if (customDuration.value.trim() === "") return;
+
+  const value = Number(customDuration.value);
+
+  if (!Number.isFinite(value) || value < 1 || value > 3600) {
+    customDuration.value = String(state.duration);
+    showError("Durasi harus antara 1 sampai 3600 detik.");
+    return;
+  }
+
+  state.duration = Math.round(value);
+  customDuration.value = String(state.duration);
+  updateDurationHint();
+});
+
 function updateDurationHint() {
-  if (!state.file || !durationHint) return;
+  if (!durationHint) return;
 
-  const video = document.createElement("video");
-  const url = URL.createObjectURL(state.file);
+  if (!state.file) {
+    durationHint.textContent = "Pilih preset atau isi durasi sendiri.";
+    return;
+  }
 
-  video.preload = "metadata";
-  video.src = url;
-
-  video.onloadedmetadata = () => {
-    const actualDuration = video.duration;
-
+  if (state.mediaType === "image") {
     durationHint.textContent =
-      Number.isFinite(actualDuration) && actualDuration < state.duration
-        ? `Video asli ${actualDuration.toFixed(1)} detik. Hasil akan mengikuti durasi asli video.`
-        : `Video akan dipotong otomatis menjadi maksimal ${state.duration} detik.`;
+      `Foto akan dijadikan video selama ${state.duration} detik.`;
+    return;
+  }
 
-    URL.revokeObjectURL(url);
-  };
-
-  video.onerror = () => {
-    durationHint.textContent = `Durasi hasil maksimal ${state.duration} detik.`;
-    URL.revokeObjectURL(url);
-  };
+  if (Number.isFinite(state.sourceDuration)) {
+    if (state.sourceDuration < state.duration) {
+      durationHint.textContent =
+        `Durasi video asli ${state.sourceDuration.toFixed(1)} detik. Hasil akan mengikuti durasi video asli.`;
+    } else {
+      durationHint.textContent =
+        `Video akan dipotong menjadi ${state.duration} detik.`;
+    }
+  } else {
+    durationHint.textContent =
+      `Durasi hasil maksimal ${state.duration} detik, mengikuti panjang video asli jika lebih pendek.`;
+  }
 }
 
 resolution?.addEventListener("change", () => {
@@ -847,6 +1002,7 @@ function createTextOverlay(width, height) {
   if (!state.text.trim() || state.textSize === 0) return canvas;
 
   const previewWidth = previewScreen?.clientWidth || 300;
+  const previewHeight = previewScreen?.clientHeight || previewWidth * 16 / 9;
   const scale = width / previewWidth;
   const safeWidth = width * 0.76;
   const safeHeight = height * 0.36;
@@ -856,7 +1012,7 @@ function createTextOverlay(width, height) {
   if (state.autoFit) {
     previewFontSize = getFittedFontSize(
       previewWidth * 0.76,
-      (previewScreen?.clientHeight || previewWidth * 16 / 9) * 0.36,
+      previewHeight * 0.36,
       state.textSize,
       state.paragraphGap
     );
@@ -864,6 +1020,7 @@ function createTextOverlay(width, height) {
 
   const fontSize = Math.max(1, previewFontSize * scale);
   const paragraphSpacing = state.paragraphGap * scale;
+
   context.font = fontString(fontSize);
   context.textAlign = state.alignment;
   context.textBaseline = "middle";
@@ -879,7 +1036,6 @@ function createTextOverlay(width, height) {
     if (index < paragraphLines.length - 1) totalHeight += paragraphSpacing;
   });
 
-  /* Jika auto-fit aktif, pastikan tinggi teks tidak melewati batas */
   if (state.autoFit && totalHeight > safeHeight) {
     let adjusted = fontSize;
 
@@ -892,6 +1048,7 @@ function createTextOverlay(width, height) {
       });
 
       totalHeight = 0;
+
       newLines.forEach((paragraph, index) => {
         totalHeight += Math.max(1, paragraph.length) * adjusted * 1.25;
         if (index < newLines.length - 1) totalHeight += paragraphSpacing;
@@ -903,7 +1060,9 @@ function createTextOverlay(width, height) {
     context.font = fontString(adjusted);
   }
 
-  const finalFontSize = Number.parseFloat(context.font.match(/(\d+(?:\.\d+)?)px/)?.[1]) || fontSize;
+  const finalFontSize =
+    Number.parseFloat(context.font.match(/(\d+(?:\.\d+)?)px/)?.[1]) || fontSize;
+
   const lineHeight = finalFontSize * 1.25;
 
   totalHeight = 0;
@@ -947,8 +1106,16 @@ function createTextOverlay(width, height) {
     const boxY = centerY - boxHeight / 2;
 
     context.save();
-    context.fillStyle = `rgba(0,0,0,${clamp(state.blurStrength / 60, 0.03, 0.35)})`;
-    drawRoundedRect(context, boxX, boxY, boxWidth, boxHeight, finalFontSize * 0.35);
+    context.fillStyle =
+      `rgba(0,0,0,${clamp(state.blurStrength / 60, 0.03, 0.35)})`;
+    drawRoundedRect(
+      context,
+      boxX,
+      boxY,
+      boxWidth,
+      boxHeight,
+      finalFontSize * 0.35
+    );
     context.fill();
     context.restore();
   }
@@ -987,8 +1154,10 @@ async function loadFFmpeg() {
 
   ffmpeg.on("progress", ({ progress }) => {
     if (!state.exporting) return;
+
     const percent = clamp(Math.round(progress * 100), 0, 99);
     setText(progressPercent, `${percent}%`);
+
     if (progressBar) progressBar.style.width = `${percent}%`;
   });
 
@@ -999,8 +1168,14 @@ async function loadFFmpeg() {
   const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
 
   await ffmpeg.load({
-    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm")
+    coreURL: await toBlobURL(
+      `${baseURL}/ffmpeg-core.js`,
+      "text/javascript"
+    ),
+    wasmURL: await toBlobURL(
+      `${baseURL}/ffmpeg-core.wasm`,
+      "application/wasm"
+    )
   });
 
   state.ffmpegReady = true;
@@ -1012,6 +1187,7 @@ async function loadFFmpeg() {
 
 function getOutputDimensions() {
   const height = state.resolution === 720 ? 1280 : 1920;
+
   return {
     width: Math.round(height * 9 / 16),
     height
@@ -1050,35 +1226,60 @@ function updateProgress(percent, label) {
 }
 
 /* =========================================
+   EXPORT VALIDATION
+========================================= */
+
+function validateExport() {
+  if (!state.file) {
+    showError("Pilih video atau foto terlebih dahulu.");
+    return false;
+  }
+
+  if (!Number.isFinite(state.duration) ||
+      state.duration < 1 ||
+      state.duration > 3600) {
+    showError("Durasi harus antara 1 sampai 3600 detik.");
+    return false;
+  }
+
+  if (state.mediaType === "image" &&
+      !["jpg", "jpeg", "png", "webp"].includes(state.mediaExtension)) {
+    showError("Format foto ini belum didukung.");
+    return false;
+  }
+
+  return true;
+}
+
+/* =========================================
    MAIN EXPORT PROCESS
 ========================================= */
 
 async function exportVideo() {
-  if (!state.file) {
-    showError("Pilih video terlebih dahulu.");
-    return;
-  }
-
   if (state.exporting) return;
+  clearExportMessages();
+
+  if (!validateExport()) return;
 
   state.exporting = true;
+
   if (exportButton) {
     exportButton.disabled = true;
     exportButton.classList.add("loading");
   }
 
-  clearExportMessages();
   exportProgress?.classList.add("visible");
-  updateProgress(0, "Menyiapkan video...");
+  updateProgress(0, "Menyiapkan media...");
+
+  const inputName = `quietframe-input.${state.mediaExtension}`;
+  const overlayName = "quietframe-overlay.png";
+  const outputName = "quietframe-output.mp4";
 
   try {
     await loadFFmpeg();
-    updateProgress(8, "Membaca video...");
+    updateProgress(8, "Membaca media...");
 
     const ffmpeg = state.ffmpeg;
-    const inputName = "quietframe-input.mp4";
-    const overlayName = "quietframe-overlay.png";
-    const outputName = "quietframe-output.mp4";
 
     for (const name of [inputName, overlayName, outputName]) {
       try {
@@ -1090,30 +1291,55 @@ async function exportVideo() {
     updateProgress(20, "Menyiapkan teks...");
 
     const dimensions = getOutputDimensions();
-    const overlayCanvas = createTextOverlay(dimensions.width, dimensions.height);
+    const overlayCanvas = createTextOverlay(
+      dimensions.width,
+      dimensions.height
+    );
 
     const overlayBlob = await new Promise((resolve) => {
       overlayCanvas.toBlob(resolve, "image/png");
     });
 
-    if (!overlayBlob) throw new Error("Gagal membuat lapisan teks.");
+    if (!overlayBlob) {
+      throw new Error("Gagal membuat lapisan teks.");
+    }
 
     await ffmpeg.writeFile(overlayName, await fetchFile(overlayBlob));
-    updateProgress(30, "Memproses video...");
+    updateProgress(30, "Menyiapkan proses ekspor...");
 
     const selectedAudio =
       $('input[name="audioMode"]:checked')?.value || "original";
 
-    const command = [
-      "-i", inputName,
-      "-i", overlayName,
+    const command = [];
+
+    if (state.mediaType === "image") {
+      command.push(
+        "-loop", "1",
+        "-framerate", "30",
+        "-i", inputName
+      );
+    } else {
+      command.push("-i", inputName);
+    }
+
+    command.push(
+      "-loop", "1",
+      "-framerate", "30",
+      "-i", overlayName
+    );
+
+    command.push(
       "-filter_complex",
       `[0:v]${getFFmpegVideoFilter()}[base];[base][1:v]overlay=0:0:format=auto[vout]`,
       "-map", "[vout]"
-    ];
+    );
 
-    if (selectedAudio === "original") {
-      command.push("-map", "0:a?", "-c:a", "aac", "-b:a", "128k");
+    if (state.mediaType === "video" && selectedAudio === "original") {
+      command.push(
+        "-map", "0:a?",
+        "-c:a", "aac",
+        "-b:a", "128k"
+      );
     } else {
       command.push("-an");
     }
@@ -1125,7 +1351,6 @@ async function exportVideo() {
       "-pix_fmt", "yuv420p",
       "-r", "30",
       "-t", String(state.duration),
-      "-shortest",
       "-movflags", "+faststart",
       outputName
     );
@@ -1133,14 +1358,17 @@ async function exportVideo() {
     updateProgress(40, "Merender video...");
 
     const exitCode = await ffmpeg.exec(command);
+
     if (exitCode !== 0) {
-      throw new Error("Proses FFmpeg gagal. Coba gunakan video lain.");
+      throw new Error(
+        "Proses FFmpeg gagal. Coba gunakan file media lain atau resolusi 720p."
+      );
     }
 
     updateProgress(94, "Menyiapkan hasil...");
 
     const outputData = await ffmpeg.readFile(outputName);
-    const outputBlob = new Blob([outputData.buffer], { type: "video/mp4" });
+    const outputBlob = new Blob([outputData], { type: "video/mp4" });
 
     if (state.outputURL) URL.revokeObjectURL(state.outputURL);
     state.outputURL = URL.createObjectURL(outputBlob);
@@ -1162,7 +1390,11 @@ async function exportVideo() {
     }
   } catch (error) {
     console.error("QuietFrame export error:", error);
-    showError(`Gagal memproses video: ${error.message || "Terjadi kesalahan."}`);
+
+    showError(
+      `Gagal memproses media: ${error.message || "Terjadi kesalahan."}`
+    );
+
     setText(progressLabel, "Ekspor gagal");
   } finally {
     state.exporting = false;
@@ -1184,28 +1416,67 @@ downloadButton?.addEventListener("click", (event) => {
 });
 
 /* =========================================
-   PREVIEW FULLSCREEN
+   FULLSCREEN PREVIEW
 ========================================= */
+
+let fullscreenButton = null;
 
 function createPreviewFullscreenButton() {
   const topline = $(".preview-topline");
   if (!topline || $("#previewFullscreen")) return;
 
-  const button = document.createElement("button");
-  button.type = "button";
-  button.id = "previewFullscreen";
-  button.className = "preview-fullscreen-button";
-  button.textContent = "Perbesar";
+  fullscreenButton = document.createElement("button");
+  fullscreenButton.type = "button";
+  fullscreenButton.id = "previewFullscreen";
+  fullscreenButton.className = "preview-fullscreen-button";
+  fullscreenButton.textContent = "Perbesar";
+  fullscreenButton.setAttribute("aria-pressed", "false");
 
-  button.addEventListener("click", () => {
-    const enabled = document.body.classList.toggle("preview-expanded");
-    button.textContent = enabled ? "Tutup" : "Perbesar";
-    button.setAttribute("aria-pressed", String(enabled));
-    requestAnimationFrame(updateQuotePreview);
+  fullscreenButton.addEventListener("click", () => {
+    if (document.body.classList.contains("preview-expanded")) {
+      exitPreviewFullscreen();
+    } else {
+      enterPreviewFullscreen();
+    }
   });
 
-  topline.appendChild(button);
+  topline.appendChild(fullscreenButton);
 }
+
+function enterPreviewFullscreen() {
+  document.body.classList.add("preview-expanded");
+
+  if (fullscreenButton) {
+    fullscreenButton.textContent = "Tutup";
+    fullscreenButton.setAttribute("aria-pressed", "true");
+  }
+
+  requestAnimationFrame(() => {
+    updateQuotePreview();
+    updateMediaAppearance();
+  });
+}
+
+function exitPreviewFullscreen() {
+  document.body.classList.remove("preview-expanded");
+
+  if (fullscreenButton) {
+    fullscreenButton.textContent = "Perbesar";
+    fullscreenButton.setAttribute("aria-pressed", "false");
+  }
+
+  requestAnimationFrame(() => {
+    updateQuotePreview();
+    updateMediaAppearance();
+  });
+}
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" &&
+      document.body.classList.contains("preview-expanded")) {
+    exitPreviewFullscreen();
+  }
+});
 
 createPreviewFullscreenButton();
 
@@ -1229,9 +1500,10 @@ if ("ResizeObserver" in window && previewScreen) {
 
 function initialize() {
   showStage(1);
+
   updateCharacterCount();
   updateQuotePreview();
-  updateVideoAppearance();
+  updateMediaAppearance();
 
   setText(textSizeValue, `${state.textSize}px`);
   setText(textOffsetValue, "0%");
@@ -1257,6 +1529,13 @@ function initialize() {
     textOffsetX.min = "-35";
     textOffsetX.max = "35";
   }
+
+  if (customDuration) {
+    customDuration.value = "";
+  }
+
+  if (previewVideo) previewVideo.style.display = "none";
+  if (previewImage) previewImage.style.display = "none";
 }
 
 initialize();
