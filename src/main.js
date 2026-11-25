@@ -7,8 +7,10 @@ const $ = (id) => document.getElementById(id);
 let sourceFile = null;
 let selectedStyle = 'cinematic';
 let selectedFont = 'serif';
+let selectedAlignment = 'center';
 let ffmpeg = null;
 let outputUrl = null;
+let previewUrl = null;
 
 const styles = {
   cinematic: 'eq=contrast=1.18:brightness=-0.06:saturation=0.82',
@@ -41,6 +43,7 @@ function showError(message) {
 
 function updatePreview() {
   const quote = $('quoteText').value.trim();
+
   $('previewQuote').textContent =
     quote || 'Hiduplah dengan tenang dan sederhana. Tak perlu semua orang tahu perjalananmu.';
 
@@ -48,17 +51,20 @@ function updatePreview() {
   $('filterStrengthValue').textContent = `${$('filterStrength').value}%`;
   $('blurStrengthValue').textContent = $('blurStrength').value;
 
-  $('quotePanel').style.color = $('textColor').value;
+  $('textSizeValue').textContent = `${$('textSize').value} px`;
 
-  $('quotePanel').style.fontFamily = fonts[selectedFont];
-  $('quotePanel').style.fontWeight =
+  $('previewQuote').style.color = $('textColor').value;
+  $('previewQuote').style.fontFamily = fonts[selectedFont];
+  $('previewQuote').style.fontWeight =
     selectedFont === 'bold' ? '900' : '400';
-
-  $('quotePanel').style.fontStyle =
+  $('previewQuote').style.fontStyle =
     selectedFont === 'soft' ? 'italic' : 'normal';
 
-  $('quotePanel').dataset.position = $('textPosition').value;
+  $('previewQuote').style.textAlign = selectedAlignment;
+  $('previewQuote').style.fontSize =
+    `clamp(12px, ${Number($('textSize').value) / 10.8}cqw, 32px)`;
 
+  $('quotePanel').dataset.position = $('textPosition').value;
   $('previewScreen').dataset.style = selectedStyle;
 }
 
@@ -70,22 +76,27 @@ function createTextOverlay(quote, width, height) {
   const ctx = canvas.getContext('2d');
   const position = $('textPosition').value;
   const color = $('textColor').value;
+  const autoFit = $('autoFit').checked;
 
-  const maxWidth = width * 0.76;
+  const boxWidth = width * 0.88;
+  const padding = width * 0.06;
+  const textMaxWidth = boxWidth - padding * 2;
   const maxHeight = height * 0.42;
   const words = quote.split(/\s+/);
 
-  let fontSize = Math.min(64, width * 0.065);
+  let fontSize = Number($('textSize').value) * (width / 1080);
   let lines = [];
 
   function wrapText(size) {
     ctx.font = `${selectedFont === 'bold' ? '900' : '400'} ${size}px ${fonts[selectedFont]}`;
+
     const result = [];
     let line = '';
 
     for (const word of words) {
       const test = line ? `${line} ${word}` : word;
-      if (ctx.measureText(test).width > maxWidth && line) {
+
+      if (ctx.measureText(test).width > textMaxWidth && line) {
         result.push(line);
         line = word;
       } else {
@@ -97,19 +108,29 @@ function createTextOverlay(quote, width, height) {
     return result;
   }
 
-  do {
-    lines = wrapText(fontSize);
-    if (lines.length * fontSize * 1.35 <= maxHeight) break;
-    fontSize -= 2;
-  } while (fontSize > 24);
+  lines = wrapText(fontSize);
+
+  if (autoFit) {
+    while (
+      lines.length * fontSize * 1.35 > maxHeight &&
+      fontSize > 18 * (width / 1080)
+    ) {
+      fontSize -= 2 * (width / 1080);
+      lines = wrapText(fontSize);
+    }
+  }
 
   const lineHeight = fontSize * 1.35;
-  const boxHeight = lines.length * lineHeight + 90;
-  const boxWidth = width * 0.88;
+  const boxHeight = Math.max(
+    lineHeight + 70,
+    lines.length * lineHeight + 70
+  );
 
   let y = (height - boxHeight) / 2;
   if (position === 'upper') y = height * 0.29;
   if (position === 'lower') y = height * 0.54;
+
+  y = Math.max(20, Math.min(y, height - boxHeight - 20));
 
   const x = (width - boxWidth) / 2;
 
@@ -123,16 +144,24 @@ function createTextOverlay(quote, width, height) {
   ctx.fill();
 
   ctx.fillStyle = color;
-  ctx.textAlign = 'center';
+  ctx.textAlign = selectedAlignment;
   ctx.textBaseline = 'middle';
   ctx.font = `${selectedFont === 'bold' ? '900' : '400'} ${fontSize}px ${fonts[selectedFont]}`;
+
+  let textX = width / 2;
+
+  if (selectedAlignment === 'left') {
+    textX = x + padding;
+  } else if (selectedAlignment === 'right') {
+    textX = x + boxWidth - padding;
+  }
 
   lines.forEach((line, index) => {
     ctx.fillText(
       line,
-      width / 2,
-      y + 45 + index * lineHeight + lineHeight / 2,
-      maxWidth
+      textX,
+      y + 35 + index * lineHeight + lineHeight / 2,
+      textMaxWidth
     );
   });
 
@@ -151,11 +180,18 @@ async function loadEngine() {
     setProgress('Memproses video…', percent);
   });
 
-  const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
+  const baseURL =
+    'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
 
   await ffmpeg.load({
-    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm')
+    coreURL: await toBlobURL(
+      `${baseURL}/ffmpeg-core.js`,
+      'text/javascript'
+    ),
+    wasmURL: await toBlobURL(
+      `${baseURL}/ffmpeg-core.wasm`,
+      'application/wasm'
+    )
   });
 }
 
@@ -166,6 +202,7 @@ async function renderVideo() {
   }
 
   const quote = $('quoteText').value.trim();
+
   if (!quote) {
     showError('Tulis kutipan terlebih dahulu.');
     return;
@@ -181,7 +218,11 @@ async function renderVideo() {
   $('outputCard').hidden = true;
 
   try {
-    setProgress('Memuat mesin video…', 5, 'Pertama kali membutuhkan koneksi internet untuk memuat FFmpeg.');
+    setProgress(
+      'Memuat mesin video…',
+      5,
+      'Pertama kali membutuhkan koneksi internet untuk memuat FFmpeg.'
+    );
 
     await loadEngine();
 
@@ -197,18 +238,23 @@ async function renderVideo() {
     const height = width * 16 / 9;
 
     const overlayBlob = await createTextOverlay(quote, width, height);
-    if (!overlayBlob) throw new Error('Gagal membuat teks overlay.');
 
-    await ffmpeg.writeFile(overlayName, await fetchFile(overlayBlob));
+    if (!overlayBlob) {
+      throw new Error('Gagal membuat teks overlay.');
+    }
+
+    await ffmpeg.writeFile(
+      overlayName,
+      await fetchFile(overlayBlob)
+    );
 
     const strength = Number($('filterStrength').value) / 100;
-    const blur = Number($('blurStrength').value);
     const filter = styles[selectedStyle];
 
     const filters = [
       `scale=${width}:${height}:force_original_aspect_ratio=increase`,
       `crop=${width}:${height}`,
-      `setsar=1`,
+      'setsar=1',
       `eq=contrast=${1 + strength * 0.18}:saturation=${0.85 + strength * 0.15}`
     ];
 
@@ -249,21 +295,37 @@ async function renderVideo() {
     await ffmpeg.exec(args);
 
     const data = await ffmpeg.readFile(outputName);
-    const blob = new Blob([data.buffer], { type: 'video/mp4' });
+    const blob = new Blob([data.buffer], {
+      type: 'video/mp4'
+    });
 
-    if (outputUrl) URL.revokeObjectURL(outputUrl);
+    if (outputUrl) {
+      URL.revokeObjectURL(outputUrl);
+    }
+
     outputUrl = URL.createObjectURL(blob);
 
     $('downloadBtn').href = outputUrl;
-    $('outputInfo').textContent = `${width} × ${height} · MP4 · 9:16`;
+    $('outputInfo').textContent =
+      `${width} × ${height} · MP4 · 9:16`;
+
     $('outputCard').hidden = false;
 
-    setProgress('Selesai!', 100, 'Video berhasil dibuat. Tekan Unduh MP4 untuk menyimpan.');
+    setProgress(
+      'Selesai!',
+      100,
+      'Video berhasil dibuat. Tekan Unduh MP4 untuk menyimpan.'
+    );
 
   } catch (error) {
     console.error(error);
-    showError(`Gagal memproses video: ${error.message || error}. Coba gunakan video MP4 yang lebih kecil.`);
+
+    showError(
+      `Gagal memproses video: ${error.message || error}. Coba gunakan video MP4 yang lebih kecil.`
+    );
+
     setProgress('Proses gagal', 0);
+
   } finally {
     $('renderBtn').disabled = false;
   }
@@ -276,10 +338,15 @@ $('videoFile').addEventListener('change', (event) => {
   sourceFile = file;
   $('fileHint').textContent = file.name;
   $('videoMeta').hidden = false;
-  $('videoMeta').textContent = `${(file.size / 1024 / 1024).toFixed(1)} MB`;
+  $('videoMeta').textContent =
+    `${(file.size / 1024 / 1024).toFixed(1)} MB`;
 
-  const url = URL.createObjectURL(file);
-  $('previewVideo').src = url;
+  if (previewUrl) {
+    URL.revokeObjectURL(previewUrl);
+  }
+
+  previewUrl = URL.createObjectURL(file);
+  $('previewVideo').src = previewUrl;
   $('previewVideo').load();
   $('previewVideo').play().catch(() => {});
 
@@ -292,13 +359,31 @@ $('filterStrength').addEventListener('input', updatePreview);
 $('blurStrength').addEventListener('input', updatePreview);
 $('textColor').addEventListener('change', updatePreview);
 $('textPosition').addEventListener('change', updatePreview);
+$('textSize').addEventListener('input', updatePreview);
+$('autoFit').addEventListener('change', updatePreview);
+
+document.querySelectorAll('[data-align]').forEach((button) => {
+  button.addEventListener('click', () => {
+    selectedAlignment = button.dataset.align;
+
+    document.querySelectorAll('[data-align]').forEach((item) => {
+      const active = item === button;
+      item.classList.toggle('active', active);
+      item.setAttribute('aria-pressed', String(active));
+    });
+
+    updatePreview();
+  });
+});
 
 document.querySelectorAll('[data-style]').forEach((button) => {
   button.addEventListener('click', () => {
     selectedStyle = button.dataset.style;
-    document.querySelectorAll('[data-style]').forEach((item) =>
-      item.classList.toggle('active', item === button)
-    );
+
+    document.querySelectorAll('[data-style]').forEach((item) => {
+      item.classList.toggle('active', item === button);
+    });
+
     updatePreview();
   });
 });
@@ -306,9 +391,11 @@ document.querySelectorAll('[data-style]').forEach((button) => {
 document.querySelectorAll('[data-font]').forEach((button) => {
   button.addEventListener('click', () => {
     selectedFont = button.dataset.font;
-    document.querySelectorAll('[data-font]').forEach((item) =>
-      item.classList.toggle('active', item === button)
-    );
+
+    document.querySelectorAll('[data-font]').forEach((item) => {
+      item.classList.toggle('active', item === button);
+    });
+
     updatePreview();
   });
 });
