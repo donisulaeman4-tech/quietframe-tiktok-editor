@@ -3,7 +3,7 @@ import { fetchFile, toBlobURL } from "https://esm.sh/@ffmpeg/util@0.12.1";
 
 /* =========================================
    QUIETFRAME — MAIN JAVASCRIPT
-   Versi revisi terpadu
+   Versi perbaikan Auto Fit
 ========================================= */
 
 const $ = (selector) => document.querySelector(selector);
@@ -457,6 +457,7 @@ function wrapText(context, text, maxWidth) {
       }
 
       let fragment = "";
+
       for (const character of word) {
         const next = fragment + character;
 
@@ -467,6 +468,7 @@ function wrapText(context, text, maxWidth) {
           fragment = next;
         }
       }
+
       line = fragment;
     }
 
@@ -476,36 +478,79 @@ function wrapText(context, text, maxWidth) {
   return lines;
 }
 
-function getPreviewFontSize() {
-  const width = previewScreen?.clientWidth || 300;
-  const height = previewScreen?.clientHeight || width * 16 / 9;
-  const logicalScale = width / 360;
-  const requested = Math.max(1, state.textSize * logicalScale);
+/* AUTO FIT PREVIEW */
 
-  if (!state.autoFit || !state.text.trim()) return requested;
+function getPreviewTextWidth() {
+  if (previewQuote) {
+    const quoteWidth = previewQuote.getBoundingClientRect().width;
+    if (quoteWidth > 0) return quoteWidth;
+  }
+
+  if (quotePanelInner) {
+    const innerWidth = quotePanelInner.getBoundingClientRect().width;
+    if (innerWidth > 0) return innerWidth;
+  }
+
+  const screenWidth = previewScreen?.clientWidth || 300;
+  return screenWidth * 0.76;
+}
+
+function calculateAutoFitFontSize({
+  text,
+  requestedSize,
+  maxWidth,
+  maxHeight,
+  paragraphGap
+}) {
+  const requested = Math.max(1, requestedSize);
+
+  if (!state.autoFit || !text.trim()) return requested;
 
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
-  if (!context) return requested;
 
-  const maxWidth = width * 0.76;
-  const maxHeight = height * 0.36;
+  if (!context || maxWidth <= 0 || maxHeight <= 0) {
+    return requested;
+  }
+
   let size = requested;
 
   while (size > 1) {
     context.font = fontString(size);
-    const lines = wrapText(context, state.text, maxWidth);
-    const lineCount = lines.length;
-    const paragraphCount = state.text.split("\n").length;
-    const gap = state.paragraphGap * logicalScale;
-    const totalHeight = lineCount * size * 1.25 +
-      Math.max(0, paragraphCount - 1) * gap;
+
+    const lines = wrapText(context, text, maxWidth);
+    const lineCount = Math.max(1, lines.length);
+    const paragraphCount = text.split("\n").length;
+
+    const totalHeight =
+      lineCount * size * 1.25 +
+      Math.max(0, paragraphCount - 1) * paragraphGap;
 
     if (totalHeight <= maxHeight) break;
-    size -= 0.5;
+
+    size = Math.max(1, size - 0.5);
   }
 
-  return Math.max(1, size);
+  return size;
+}
+
+function getPreviewFontSize() {
+  const width = previewScreen?.clientWidth || 300;
+  const height = previewScreen?.clientHeight || width * 16 / 9;
+  const logicalScale = width / 360;
+
+  const requestedSize = Math.max(1, state.textSize * logicalScale);
+  const maxWidth = getPreviewTextWidth();
+  const maxHeight = height * 0.36;
+  const gap = state.paragraphGap * logicalScale;
+
+  return calculateAutoFitFontSize({
+    text: state.text,
+    requestedSize,
+    maxWidth,
+    maxHeight,
+    paragraphGap: gap
+  });
 }
 
 function updateQuotePreview() {
@@ -516,17 +561,23 @@ function updateQuotePreview() {
 
   const previewWidth = previewScreen?.clientWidth || 300;
   const logicalScale = previewWidth / 360;
-  const fontSize = getPreviewFontSize();
 
   previewQuote.style.color = state.textColor;
   previewQuote.style.fontFamily = FONT_MAP[state.font] || FONT_MAP.serif;
-  previewQuote.style.fontSize = `${fontSize}px`;
-  previewQuote.style.textAlign = state.alignment;
   previewQuote.style.fontWeight = state.font === "bold" ? "900" : "normal";
+  previewQuote.style.textAlign = state.alignment;
   previewQuote.style.lineHeight = "1.25";
   previewQuote.style.display = state.textSize === 0 ? "none" : "block";
 
-  quotePanel.classList.remove("position-top", "position-center", "position-bottom");
+  const fontSize = getPreviewFontSize();
+  previewQuote.style.fontSize = `${fontSize}px`;
+
+  quotePanel.classList.remove(
+    "position-top",
+    "position-center",
+    "position-bottom"
+  );
+
   quotePanel.classList.add(`position-${state.position}`);
 
   const screenHeight = previewScreen?.clientHeight || 0;
@@ -537,20 +588,18 @@ function updateQuotePreview() {
   );
 
   quotePanel.style.setProperty("--quote-offset-x", `${state.offsetX}%`);
-  quotePanelInner.style.setProperty("--paragraph-gap", `${state.paragraphGap * logicalScale}px`);
-  quotePanelInner.style.setProperty("--quote-blur", `${state.blurStrength * logicalScale}px`);
+
+  quotePanelInner.style.setProperty(
+    "--paragraph-gap",
+    `${state.paragraphGap * logicalScale}px`
+  );
+
+  quotePanelInner.style.setProperty(
+    "--quote-blur",
+    `${state.blurStrength * logicalScale}px`
+  );
+
   quotePanelInner.classList.toggle("blur-active", state.blurEnabled);
-
-  applyPreviewAutoFit(fontSize);
-}
-
-function applyPreviewAutoFit(fontSize) {
-  if (!previewQuote) return;
-  if (state.textSize === 0) {
-    previewQuote.style.display = "none";
-    return;
-  }
-  previewQuote.style.fontSize = `${fontSize}px`;
 }
 
 editorQuote?.addEventListener("input", updateQuotePreview);
@@ -581,6 +630,7 @@ editorQuote?.addEventListener("input", updateQuotePreview);
 ].forEach(([inputId, outputId, update]) => {
   const input = $(`#${inputId}`);
   const output = $(`#${outputId}`);
+
   if (!input) return;
 
   input.addEventListener("input", () => {
@@ -593,13 +643,21 @@ editorQuote?.addEventListener("input", updateQuotePreview);
 
 textColor?.addEventListener("change", () => {
   state.textColor = textColor.value;
-  if (customTextColor) customTextColor.value = textColor.value;
+
+  if (customTextColor) {
+    customTextColor.value = textColor.value;
+  }
+
   updateQuotePreview();
 });
 
 customTextColor?.addEventListener("input", () => {
   state.textColor = customTextColor.value;
-  if (textColor) textColor.value = customTextColor.value;
+
+  if (textColor) {
+    textColor.value = customTextColor.value;
+  }
+
   updateQuotePreview();
 });
 
@@ -608,9 +666,11 @@ customTextColor?.addEventListener("input", () => {
 $$(".position-button").forEach((button) => {
   button.addEventListener("click", () => {
     state.position = button.dataset.position;
+
     $$(".position-button").forEach((item) => {
       item.classList.toggle("active", item === button);
     });
+
     updateQuotePreview();
   });
 });
@@ -618,9 +678,11 @@ $$(".position-button").forEach((button) => {
 $$(".align-button").forEach((button) => {
   button.addEventListener("click", () => {
     state.alignment = button.dataset.align;
+
     $$(".align-button").forEach((item) => {
       item.classList.toggle("active", item === button);
     });
+
     updateQuotePreview();
   });
 });
@@ -657,6 +719,7 @@ if (quotePanel && previewScreen) {
     initialY = state.offset;
 
     quotePanel.setPointerCapture?.(event.pointerId);
+
     guideVertical?.classList.add("visible");
     guideHorizontal?.classList.add("visible");
   });
@@ -667,8 +730,11 @@ if (quotePanel && previewScreen) {
     const rect = previewScreen.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
 
-    let nextX = initialX + ((event.clientX - startX) / rect.width) * 100;
-    let nextY = initialY + ((event.clientY - startY) / (rect.height * 0.35)) * 100;
+    let nextX =
+      initialX + ((event.clientX - startX) / rect.width) * 100;
+
+    let nextY =
+      initialY + ((event.clientY - startY) / (rect.height * 0.35)) * 100;
 
     if (Math.abs(nextX) < 2.5) nextX = 0;
     if (Math.abs(nextY) < 2.5) nextY = 0;
@@ -687,6 +753,7 @@ if (quotePanel && previewScreen) {
 
   const stopDragging = () => {
     dragging = false;
+
     guideVertical?.classList.remove("visible");
     guideHorizontal?.classList.remove("visible");
   };
@@ -701,9 +768,11 @@ if (quotePanel && previewScreen) {
 $$(".font-option").forEach((button) => {
   button.addEventListener("click", () => {
     state.font = button.dataset.font;
+
     $$(".font-option").forEach((item) => {
       item.classList.toggle("active", item === button);
     });
+
     updateQuotePreview();
   });
 });
@@ -712,6 +781,7 @@ $$(".font-option").forEach((button) => {
 
 function updateMediaAppearance() {
   const filter = FILTER_PREVIEW[state.filter] || "";
+
   const temperature = state.temperature
     ? `sepia(${Math.abs(state.temperature) / 180}) hue-rotate(${state.temperature * 0.35}deg)`
     : "";
@@ -731,9 +801,11 @@ function updateMediaAppearance() {
 $$(".filter-option").forEach((button) => {
   button.addEventListener("click", () => {
     state.filter = button.dataset.filter;
+
     $$(".filter-option").forEach((item) => {
       item.classList.toggle("active", item === button);
     });
+
     updateMediaAppearance();
   });
 });
@@ -745,6 +817,7 @@ $$(".filter-option").forEach((button) => {
   ["temperature", "temperatureValue", "temperature", ""]
 ].forEach(([id, outputId, key, suffix]) => {
   const input = $(`#${id}`);
+
   if (!input) return;
 
   input.addEventListener("input", () => {
@@ -767,7 +840,9 @@ $("#autoAdjust")?.addEventListener("click", () => {
     ["temperature", 5, "5"]
   ].forEach(([id, value, label]) => {
     const input = $(`#${id}`);
+
     if (input) input.value = value;
+
     setText($(`#${id}Value`), label);
   });
 
@@ -788,7 +863,9 @@ $("#resetAdjustments")?.addEventListener("click", () => {
     ["temperature", 0, "0"]
   ].forEach(([id, value, label]) => {
     const input = $(`#${id}`);
+
     if (input) input.value = value;
+
     setText($(`#${id}Value`), label);
   });
 
@@ -811,31 +888,45 @@ function setDuration(value, updateInput = true) {
   state.duration = duration;
 
   $$("[data-duration]").forEach((button) => {
-    button.classList.toggle("active", Number(button.dataset.duration) === duration);
+    button.classList.toggle(
+      "active",
+      Number(button.dataset.duration) === duration
+    );
   });
 
   if (customDuration && updateInput) {
-    customDuration.value = [12, 15, 17, 20].includes(duration) ? "" : String(duration);
+    customDuration.value = [12, 15, 17, 20].includes(duration)
+      ? ""
+      : String(duration);
   }
 
   updateDurationHint();
+
   return true;
 }
 
 $$("[data-duration]").forEach((button) => {
-  button.addEventListener("click", () => setDuration(button.dataset.duration));
+  button.addEventListener("click", () => {
+    setDuration(button.dataset.duration);
+  });
 });
 
 customDuration?.addEventListener("input", () => {
   const raw = customDuration.value.trim();
 
   if (!raw) {
-    $$("[data-duration]").forEach((button) => button.classList.remove("active"));
+    $$("[data-duration]").forEach((button) => {
+      button.classList.remove("active");
+    });
+
     return;
   }
 
   const value = Number(raw);
-  if (!Number.isInteger(value) || value < 1 || value > 3600) return;
+
+  if (!Number.isInteger(value) || value < 1 || value > 3600) {
+    return;
+  }
 
   setDuration(value, false);
 });
@@ -844,6 +935,7 @@ customDuration?.addEventListener("change", () => {
   if (!customDuration.value.trim()) return;
 
   const value = Number(customDuration.value);
+
   if (!setDuration(value, false)) {
     customDuration.value = String(state.duration);
     showError("Durasi harus bilangan bulat antara 1 sampai 3600 detik.");
@@ -859,13 +951,17 @@ function updateDurationHint() {
   if (!state.file) {
     durationHint.textContent = "Pilih preset atau isi durasi sendiri.";
   } else if (state.mediaType === "image") {
-    durationHint.textContent = `Foto akan dijadikan video selama ${state.duration} detik.`;
-  } else if (Number.isFinite(state.sourceDuration) &&
-             state.sourceDuration < state.duration) {
+    durationHint.textContent =
+      `Foto akan dijadikan video selama ${state.duration} detik.`;
+  } else if (
+    Number.isFinite(state.sourceDuration) &&
+    state.sourceDuration < state.duration
+  ) {
     durationHint.textContent =
       `Durasi video asli ${state.sourceDuration.toFixed(1)} detik. Hasil mengikuti durasi aslinya.`;
   } else {
-    durationHint.textContent = `Video akan dipotong maksimal ${state.duration} detik.`;
+    durationHint.textContent =
+      `Video akan dipotong maksimal ${state.duration} detik.`;
   }
 }
 
@@ -876,7 +972,10 @@ resolution?.addEventListener("change", () => {
 $$('input[name="audioMode"]').forEach((radio) => {
   radio.addEventListener("change", () => {
     $$(".audio-option").forEach((option) => {
-      option.classList.toggle("active", Boolean(option.querySelector("input")?.checked));
+      option.classList.toggle(
+        "active",
+        Boolean(option.querySelector("input")?.checked)
+      );
     });
   });
 });
@@ -885,11 +984,15 @@ $$('input[name="audioMode"]').forEach((radio) => {
 
 function createTextOverlay(width, height) {
   const canvas = document.createElement("canvas");
+
   canvas.width = width;
   canvas.height = height;
 
   const context = canvas.getContext("2d");
-  if (!context || !state.text.trim() || state.textSize === 0) return canvas;
+
+  if (!context || !state.text.trim() || state.textSize === 0) {
+    return canvas;
+  }
 
   const logicalScale = width / 360;
   const fontSize = getExportFontSize(width, height, logicalScale);
@@ -900,13 +1003,20 @@ function createTextOverlay(width, height) {
   context.textAlign = state.alignment;
   context.textBaseline = "middle";
 
-  const paragraphs = state.text.split("\n").map((paragraph) =>
-    wrapText(context, paragraph, maxWidth)
-  );
+  const paragraphs = state.text.split("\n").map((paragraph) => {
+    return wrapText(context, paragraph, maxWidth);
+  });
 
   const lineHeight = fontSize * 1.25;
-  const lineCount = paragraphs.reduce((total, lines) => total + Math.max(1, lines.length), 0);
-  const totalHeight = lineCount * lineHeight + Math.max(0, paragraphs.length - 1) * gap;
+
+  const lineCount = paragraphs.reduce(
+    (total, lines) => total + Math.max(1, lines.length),
+    0
+  );
+
+  const totalHeight =
+    lineCount * lineHeight +
+    Math.max(0, paragraphs.length - 1) * gap;
 
   let centerY = state.position === "top"
     ? height * 0.28
@@ -926,23 +1036,49 @@ function createTextOverlay(width, height) {
 
   if (state.blurEnabled) {
     let widest = 0;
+
     paragraphs.flat().forEach((line) => {
-      widest = Math.max(widest, context.measureText(line).width);
+      widest = Math.max(
+        widest,
+        context.measureText(line).width
+      );
     });
 
     const padX = fontSize * 0.55;
     const padY = fontSize * 0.32;
-    const boxWidth = Math.min(widest + padX * 2, width * 0.86);
+
+    const boxWidth = Math.min(
+      widest + padX * 2,
+      width * 0.86
+    );
+
     const boxHeight = totalHeight + padY * 2;
 
     let boxX = x - boxWidth / 2;
-    if (state.alignment === "left") boxX = x - padX;
-    if (state.alignment === "right") boxX = x - boxWidth + padX;
+
+    if (state.alignment === "left") {
+      boxX = x - padX;
+    }
+
+    if (state.alignment === "right") {
+      boxX = x - boxWidth + padX;
+    }
 
     context.save();
-    context.fillStyle = `rgba(0,0,0,${clamp(state.blurStrength / 70, 0.04, 0.38)})`;
+
+    context.fillStyle =
+      `rgba(0,0,0,${clamp(state.blurStrength / 70, 0.04, 0.38)})`;
+
     context.beginPath();
-    context.roundRect(boxX, centerY - boxHeight / 2, boxWidth, boxHeight, fontSize * 0.35);
+
+    context.roundRect(
+      boxX,
+      centerY - boxHeight / 2,
+      boxWidth,
+      boxHeight,
+      fontSize * 0.35
+    );
+
     context.fill();
     context.restore();
   }
@@ -960,37 +1096,31 @@ function createTextOverlay(width, height) {
       y += lineHeight;
     });
 
-    if (index < paragraphs.length - 1) y += gap;
+    if (index < paragraphs.length - 1) {
+      y += gap;
+    }
   });
 
   return canvas;
 }
 
 function getExportFontSize(width, height, logicalScale) {
-  const requested = Math.max(1, state.textSize * logicalScale);
-  if (!state.autoFit) return requested;
-
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d");
-  if (!context) return requested;
+  const requestedSize = Math.max(
+    1,
+    state.textSize * logicalScale
+  );
 
   const maxWidth = width * 0.76;
   const maxHeight = height * 0.36;
-  let size = requested;
+  const gap = state.paragraphGap * logicalScale;
 
-  while (size > 1) {
-    context.font = fontString(size);
-    const lines = wrapText(context, state.text, maxWidth);
-    const count = lines.length;
-    const paragraphCount = state.text.split("\n").length;
-    const totalHeight = count * size * 1.25 +
-      Math.max(0, paragraphCount - 1) * state.paragraphGap * logicalScale;
-
-    if (totalHeight <= maxHeight) break;
-    size -= 0.5;
-  }
-
-  return Math.max(1, size);
+  return calculateAutoFitFontSize({
+    text: state.text,
+    requestedSize,
+    maxWidth,
+    maxHeight,
+    paragraphGap: gap
+  });
 }
 
 /* FFMPEG */
@@ -998,24 +1128,42 @@ function getExportFontSize(width, height, logicalScale) {
 async function loadFFmpeg() {
   if (state.ffmpegReady) return;
 
-  if (!state.ffmpeg) state.ffmpeg = new FFmpeg();
+  if (!state.ffmpeg) {
+    state.ffmpeg = new FFmpeg();
+  }
 
   state.ffmpeg.on("progress", ({ progress }) => {
     if (!state.exporting) return;
-    const percent = clamp(Math.round(progress * 100), 0, 99);
+
+    const percent = clamp(
+      Math.round(progress * 100),
+      0,
+      99
+    );
+
     setText(progressPercent, `${percent}%`);
-    if (progressBar) progressBar.style.width = `${percent}%`;
+
+    if (progressBar) {
+      progressBar.style.width = `${percent}%`;
+    }
   });
 
   state.ffmpeg.on("log", ({ message }) => {
     console.log("[QuietFrame FFmpeg]", message);
   });
 
-  const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
+  const baseURL =
+    "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
 
   await state.ffmpeg.load({
-    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm")
+    coreURL: await toBlobURL(
+      `${baseURL}/ffmpeg-core.js`,
+      "text/javascript"
+    ),
+    wasmURL: await toBlobURL(
+      `${baseURL}/ffmpeg-core.wasm`,
+      "application/wasm"
+    )
   });
 
   state.ffmpegReady = true;
@@ -1023,7 +1171,11 @@ async function loadFFmpeg() {
 
 function getOutputDimensions() {
   const height = state.resolution === 720 ? 1280 : 1920;
-  return { width: Math.round(height * 9 / 16), height };
+
+  return {
+    width: Math.round(height * 9 / 16),
+    height
+  };
 }
 
 function getFFmpegVideoFilter() {
@@ -1052,7 +1204,10 @@ function getFFmpegVideoFilter() {
 function updateProgress(percent, label) {
   setText(progressPercent, `${percent}%`);
   setText(progressLabel, label);
-  if (progressBar) progressBar.style.width = `${percent}%`;
+
+  if (progressBar) {
+    progressBar.style.width = `${percent}%`;
+  }
 }
 
 function validateExport() {
@@ -1061,7 +1216,11 @@ function validateExport() {
     return false;
   }
 
-  if (!Number.isInteger(state.duration) || state.duration < 1 || state.duration > 3600) {
+  if (
+    !Number.isInteger(state.duration) ||
+    state.duration < 1 ||
+    state.duration > 3600
+  ) {
     showError("Durasi harus bilangan bulat antara 1 sampai 3600 detik.");
     return false;
   }
@@ -1078,6 +1237,7 @@ async function exportVideo() {
   if (state.exporting) return;
 
   clearExportMessages();
+
   if (!validateExport()) return;
 
   state.exporting = true;
@@ -1088,6 +1248,7 @@ async function exportVideo() {
   }
 
   exportProgress?.classList.add("visible");
+
   updateProgress(0, "Menyiapkan media...");
 
   const inputName = `quietframe-input.${state.mediaExtension}`;
@@ -1102,36 +1263,60 @@ async function exportVideo() {
     updateProgress(8, "Membaca media...");
 
     for (const name of [inputName, overlayName, outputName]) {
-      try { await ffmpeg.deleteFile(name); } catch {}
+      try {
+        await ffmpeg.deleteFile(name);
+      } catch {}
     }
 
-    await ffmpeg.writeFile(inputName, await fetchFile(state.file));
+    await ffmpeg.writeFile(
+      inputName,
+      await fetchFile(state.file)
+    );
 
     updateProgress(20, "Membuat teks...");
 
     const dimensions = getOutputDimensions();
-    const overlayCanvas = createTextOverlay(dimensions.width, dimensions.height);
+
+    const overlayCanvas = createTextOverlay(
+      dimensions.width,
+      dimensions.height
+    );
 
     const overlayBlob = await new Promise((resolve) => {
       overlayCanvas.toBlob(resolve, "image/png");
     });
 
-    if (!overlayBlob) throw new Error("Gagal membuat lapisan teks.");
+    if (!overlayBlob) {
+      throw new Error("Gagal membuat lapisan teks.");
+    }
 
-    await ffmpeg.writeFile(overlayName, await fetchFile(overlayBlob));
+    await ffmpeg.writeFile(
+      overlayName,
+      await fetchFile(overlayBlob)
+    );
 
     updateProgress(30, "Menyiapkan ekspor...");
 
-    const selectedAudio = $('input[name="audioMode"]:checked')?.value || "original";
+    const selectedAudio =
+      $('input[name="audioMode"]:checked')?.value || "original";
+
     const command = [];
 
     if (state.mediaType === "image") {
-      command.push("-loop", "1", "-framerate", "30", "-i", inputName);
+      command.push(
+        "-loop", "1",
+        "-framerate", "30",
+        "-i", inputName
+      );
     } else {
       command.push("-i", inputName);
     }
 
-    command.push("-loop", "1", "-framerate", "30", "-i", overlayName);
+    command.push(
+      "-loop", "1",
+      "-framerate", "30",
+      "-i", overlayName
+    );
 
     command.push(
       "-filter_complex",
@@ -1139,8 +1324,15 @@ async function exportVideo() {
       "-map", "[vout]"
     );
 
-    if (state.mediaType === "video" && selectedAudio === "original") {
-      command.push("-map", "0:a?", "-c:a", "aac", "-b:a", "128k");
+    if (
+      state.mediaType === "video" &&
+      selectedAudio === "original"
+    ) {
+      command.push(
+        "-map", "0:a?",
+        "-c:a", "aac",
+        "-b:a", "128k"
+      );
     } else {
       command.push("-an");
     }
@@ -1159,16 +1351,26 @@ async function exportVideo() {
     updateProgress(40, "Merender video...");
 
     const exitCode = await ffmpeg.exec(command);
+
     if (exitCode !== 0) {
-      throw new Error("Proses ekspor gagal. Coba gunakan resolusi 720p atau file media lain.");
+      throw new Error(
+        "Proses ekspor gagal. Coba gunakan resolusi 720p atau file media lain."
+      );
     }
 
     updateProgress(94, "Menyiapkan hasil...");
 
     const outputData = await ffmpeg.readFile(outputName);
-    const outputBlob = new Blob([outputData], { type: "video/mp4" });
 
-    if (state.outputURL) URL.revokeObjectURL(state.outputURL);
+    const outputBlob = new Blob(
+      [outputData],
+      { type: "video/mp4" }
+    );
+
+    if (state.outputURL) {
+      URL.revokeObjectURL(state.outputURL);
+    }
+
     state.outputURL = URL.createObjectURL(outputBlob);
 
     if (downloadButton) {
@@ -1178,18 +1380,27 @@ async function exportVideo() {
     }
 
     updateProgress(100, "Video selesai dibuat.");
+
     exportResult?.classList.add("visible");
+
     setText(progressLabel, "Ekspor berhasil");
 
     for (const name of [inputName, overlayName, outputName]) {
-      try { await ffmpeg.deleteFile(name); } catch {}
+      try {
+        await ffmpeg.deleteFile(name);
+      } catch {}
     }
   } catch (error) {
     console.error("QuietFrame export error:", error);
-    showError(`Gagal memproses media: ${error.message || "Terjadi kesalahan."}`);
+
+    showError(
+      `Gagal memproses media: ${error.message || "Terjadi kesalahan."}`
+    );
+
     setText(progressLabel, "Ekspor gagal");
   } finally {
     state.exporting = false;
+
     if (exportButton) {
       exportButton.disabled = false;
       exportButton.classList.remove("loading");
@@ -1210,13 +1421,16 @@ downloadButton?.addEventListener("click", (event) => {
 
 function createPreviewFullscreenButton() {
   const topline = $(".preview-topline");
+
   if (!topline || $("#previewFullscreen")) return;
 
   fullscreenButton = document.createElement("button");
+
   fullscreenButton.type = "button";
   fullscreenButton.id = "previewFullscreen";
   fullscreenButton.className = "preview-fullscreen-button";
   fullscreenButton.textContent = "Perbesar";
+
   fullscreenButton.setAttribute("aria-pressed", "false");
 
   fullscreenButton.addEventListener("click", () => {
@@ -1259,8 +1473,10 @@ function exitPreviewFullscreen() {
 }
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" &&
-      document.body.classList.contains("preview-expanded")) {
+  if (
+    event.key === "Escape" &&
+    document.body.classList.contains("preview-expanded")
+  ) {
     exitPreviewFullscreen();
   }
 });
@@ -1271,8 +1487,11 @@ createPreviewFullscreenButton();
 
 if ("ResizeObserver" in window && previewScreen) {
   const observer = new ResizeObserver(() => {
-    if (state.stage === 2) updateQuotePreview();
+    if (state.stage === 2) {
+      updateQuotePreview();
+    }
   });
+
   observer.observe(previewScreen);
 } else {
   window.addEventListener("resize", updateQuotePreview);
@@ -1306,9 +1525,17 @@ function initialize() {
     textOffsetX.max = "35";
   }
 
-  if (customDuration) customDuration.value = "";
-  if (previewVideo) previewVideo.style.display = "none";
-  if (previewImage) previewImage.style.display = "none";
+  if (customDuration) {
+    customDuration.value = "";
+  }
+
+  if (previewVideo) {
+    previewVideo.style.display = "none";
+  }
+
+  if (previewImage) {
+    previewImage.style.display = "none";
+  }
 }
 
 initialize();
