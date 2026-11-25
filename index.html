@@ -1,29 +1,25 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#090a10">
   <title>QUIETFRAME — Video Quote Editor</title>
   <link rel="stylesheet" href="./src/style.css">
 </head>
 <body>
-
   <header class="topbar">
     <a class="brand" href="./">
       <span class="brand-mark">Q</span>
       <span>QUIET<span>FRAME</span></span>
     </a>
-    <span class="local-pill">
-      <i></i> Diproses di perangkat
-    </span>
+    <span class="local-pill"><i></i> Diproses di perangkat</span>
   </header>
 
   <main class="shell">
-
-    <!-- HALAMAN 1: UPLOAD DAN KUTIPAN -->
-    <section class="stage active" data-step="1">
-
+    <!-- TAHAP 1: UPLOAD -->
+    <section class="stage upload-stage active" data-step="1">
       <div class="intro">
         <p class="eyebrow">VIDEO QUOTE CREATOR · 9:16</p>
         <h1>Buat video yang <em>bermakna.</em></h1>
@@ -31,25 +27,17 @@
       </div>
 
       <div class="content-card">
-
         <label class="upload" for="videoFile" id="uploadBox">
           <span class="upload-icon">＋</span>
           <strong>Pilih video</strong>
-          <small id="fileHint">MP4, MOV, atau WEBM · rasio hasil 9:16</small>
+          <small id="fileHint">MP4, MOV, atau WEBM · hasil 9:16</small>
           <input id="videoFile" type="file" accept="video/*">
         </label>
 
         <div id="videoMeta" class="video-meta" hidden></div>
 
-        <label class="quote-label" for="quoteText">
-          Tulis kutipanmu
-        </label>
-
-        <textarea
-          id="quoteText"
-          maxlength="650"
-          placeholder="Jangan berhenti berusaha, karena hasil baik butuh proses yang panjang."
-        ></textarea>
+        <label class="quote-label" for="quoteText">Tulis kutipanmu</label>
+        <textarea id="quoteText" maxlength="650" placeholder="Jangan berhenti berusaha, karena hasil baik butuh proses yang panjang."></textarea>
 
         <div class="field-foot">
           <span>Gunakan baris baru untuk mengatur susunan teks.</span>
@@ -57,55 +45,38 @@
         </div>
 
         <div class="error" id="errorBox" role="alert" hidden></div>
-
-        <button class="primary wide" id="toEditor" disabled type="button">
-          Mulai Mengedit <span>→</span>
-        </button>
-
+        <button class="primary wide" id="toEditor" disabled type="button">Mulai Mengedit <span>→</span></button>
       </div>
     </section>
 
-
-    <!-- HALAMAN 2: EDITOR -->
+    <!-- TAHAP 2: EDITOR -->
     <section class="stage editor-stage" data-step="2" hidden>
-
       <div class="editor-head">
-        <button class="icon-button" id="backToContent" type="button">‹</button>
-
+        <button class="icon-button" id="backToContent" type="button" aria-label="Kembali">‹</button>
         <div class="brand compact">
           <span class="brand-mark">Q</span>
           <span>QUIET<span>FRAME</span></span>
         </div>
-
-        <button class="export-top" id="toExport" type="button">
-          Ekspor ↗
-        </button>
+        <button class="export-top" id="toExport" type="button">Ekspor ↗</button>
       </div>
 
       <div class="editor-layout">
-
-        <!-- PREVIEW VIDEO -->
         <section class="preview-area">
-
           <div class="preview-topline">
-            <span>PRATINJAU TIKTOK</span>
-
+            <span>PRATINJAU VIDEO 9:16</span>
             <label class="safe-toggle">
               <input id="showTikTokUI" type="checkbox" checked>
-              Simulasi UI
+              Simulasi TikTok
             </label>
           </div>
 
-          <div class="phone-frame">
-
+          <div class="phone-frame" id="phoneFrame">
             <div class="preview-screen" id="previewScreen">
-
               <video id="previewVideo" playsinline muted loop></video>
-
               <div class="preview-shade"></div>
 
               <div class="mock-top">
-                <span>▰ Mengikuti</span>
+                <span>Mengikuti</span>
                 <b>Untuk Anda</b>
                 <span>⌕</span>
               </div>
@@ -114,142 +85,77 @@
                 <p id="previewQuote"></p>
               </div>
 
-              <!-- AREA IKON TIKTOK -->
               <div class="mock-actions">
-                <div class="mock-profile">
-                  <span>Q</span>
-                  <i>+</i>
-                </div>
-
-                <div class="mock-action">
-                  <b>♥</b>
-                  <small>148,8 rb</small>
-                </div>
-
-                <div class="mock-action">
-                  <b>●</b>
-                  <small>3.106</small>
-                </div>
-
-                <div class="mock-action">
-                  <b>▣</b>
-                  <small>4.263</small>
-                </div>
-
-                <div class="mock-action">
-                  <b>➤</b>
-                  <small>2.054</small>
-                </div>
+                <div class="mock-profile"><span>Q</span><i>+</i></div>
+                <div class="mock-action"><b class="heart">♥</b><small>148,8 rb</small></div>
+                <div class="mock-action"><b>●</b><small>3.106</small></div>
+                <div class="mock-action"><b>▣</b><small>4.263</small></div>
+                <div class="mock-action"><b>➤</b><small>2.054</small></div>
               </div>
 
-              <!-- AREA CAPTION -->
               <div class="mock-caption">
                 <strong>@quietframe</strong>
-                <span id="mockCaption">
-                  Tulis caption atau kutipan singkat di sini…
-                </span>
+                <span id="mockCaption">Tulis caption atau kutipan singkat di sini…</span>
                 <small>♫ Suara asli · Original audio</small>
               </div>
-
               <div class="mock-disc">♫</div>
-
             </div>
           </div>
 
           <div class="player-row">
             <span id="timeLabel">00:00 / 00:00</span>
-            <button id="playPreview" class="play-button" type="button">▶</button>
-            <button id="previewExpand" class="icon-button expand-button" type="button">⛶</button>
+            <button id="playPreview" class="play-button" type="button" aria-label="Putar video">▶</button>
+            <button id="previewExpand" class="icon-button expand-button" type="button" aria-label="Perbesar preview" aria-expanded="false">⛶</button>
           </div>
-
-          <p class="preview-note">
-            Elemen TikTok hanya simulasi. Tidak ikut masuk ke video ekspor.
-          </p>
-
+          <p class="preview-note">Elemen simulasi tidak ikut masuk ke video ekspor.</p>
         </section>
 
-
-        <!-- PANEL EDITOR -->
         <section class="tools-area">
-
           <nav class="toolbar" aria-label="Kategori editor">
-
-            <button class="tool active" data-tab="text" type="button">
-              <b>T</b>
-              <span>Teks</span>
-            </button>
-
-            <button class="tool" data-tab="font" type="button">
-              <b>Aa</b>
-              <span>Font</span>
-            </button>
-
-            <button class="tool" data-tab="filter" type="button">
-              <b>☷</b>
-              <span>Filter</span>
-            </button>
-
-            <button class="tool" data-tab="blur" type="button">
-              <b>▦</b>
-              <span>Blur</span>
-            </button>
-
-            <button class="tool" data-tab="audio" type="button">
-              <b>◖))</b>
-              <span>Audio</span>
-            </button>
-
+            <button class="tool active" data-tab="text" type="button"><b>T</b><span>Teks</span></button>
+            <button class="tool" data-tab="font" type="button"><b>Aa</b><span>Font</span></button>
+            <button class="tool" data-tab="filter" type="button"><b>◈</b><span>Filter</span></button>
+            <button class="tool" data-tab="blur" type="button"><b>▦</b><span>Blur</span></button>
+            <button class="tool" data-tab="audio" type="button"><b>♫</b><span>Audio</span></button>
           </nav>
 
-
           <div class="settings-card">
-
             <div class="settings-heading">
-              <button id="settingsBack" type="button">‹</button>
+              <button id="settingsBack" type="button" aria-label="Kembali ke teks">‹</button>
               <strong id="settingsTitle">Pengaturan Teks</strong>
               <span>●</span>
             </div>
 
-
-            <!-- KATEGORI TEKS -->
             <section class="tab-panel active" data-tab-panel="text">
-
               <label class="control-field">
                 Isi kutipan
                 <textarea id="editorQuote" rows="3" maxlength="650"></textarea>
               </label>
 
               <div class="control-grid">
-
-                <label class="control-field">
-                  Warna teks
+                <label class="control-field">Warna teks
                   <select id="textColor">
                     <option value="#ffffff">Putih</option>
                     <option value="#f0dfc3">Krem</option>
                     <option value="#ffe16a">Kuning</option>
                   </select>
                 </label>
-
-                <label class="control-field">
-                  Posisi
+                <label class="control-field">Posisi
                   <select id="textPosition">
                     <option value="center">Tengah aman</option>
                     <option value="upper">Agak atas</option>
                     <option value="lower">Agak bawah</option>
                   </select>
                 </label>
-
               </div>
 
-              <label class="control-field">
-                Ukuran teks
+              <label class="control-field">Ukuran teks
                 <output id="textSizeValue">64 px</output>
                 <input id="textSize" type="range" min="36" max="90" value="64">
               </label>
 
               <div class="control-field">
-                <span>Perataan</span>
-
+                <span>Perataan teks</span>
                 <div class="align-row">
                   <button class="align-option" data-align="left" type="button">Kiri</button>
                   <button class="align-option active" data-align="center" type="button">Tengah</button>
@@ -257,52 +163,24 @@
                 </div>
               </div>
 
-              <label class="check-row">
-                <input id="autoFit" type="checkbox" checked>
-                Rapikan otomatis agar teks tetap muat
-              </label>
+              <label class="check-row"><input id="autoFit" type="checkbox" checked> Rapikan otomatis agar teks tetap muat</label>
 
-              <label class="control-field">
-                Jarak antarparagraf
+              <label class="control-field">Jarak antarparagraf
                 <output id="paragraphGapValue">18 px</output>
                 <input id="paragraphGap" type="range" min="0" max="48" value="18">
               </label>
-
             </section>
 
-
-            <!-- KATEGORI FONT -->
             <section class="tab-panel" data-tab-panel="font" hidden>
-
               <div class="choice-grid">
-
-                <button class="font-option active" data-font="serif" type="button">
-                  <strong style="font-family:Georgia">Aa</strong>
-                  <span>Elegant Serif</span>
-                </button>
-
-                <button class="font-option" data-font="clean" type="button">
-                  <strong style="font-family:Arial">Aa</strong>
-                  <span>Modern Clean</span>
-                </button>
-
-                <button class="font-option" data-font="bold" type="button">
-                  <strong style="font-family:Arial Black">Aa</strong>
-                  <span>Bold Impact</span>
-                </button>
-
-                <button class="font-option" data-font="soft" type="button">
-                  <strong style="font-family:Arial;font-weight:300;font-style:italic">Aa</strong>
-                  <span>Soft Minimal</span>
-                </button>
-
+                <button class="font-option active" data-font="serif" type="button"><strong style="font-family:Georgia">Aa</strong><span>Elegant Serif</span></button>
+                <button class="font-option" data-font="clean" type="button"><strong style="font-family:Arial">Aa</strong><span>Modern Clean</span></button>
+                <button class="font-option" data-font="bold" type="button"><strong style="font-family:Arial Black">Aa</strong><span>Bold Impact</span></button>
+                <button class="font-option" data-font="soft" type="button"><strong style="font-family:Arial;font-style:italic;font-weight:300">Aa</strong><span>Soft Minimal</span></button>
               </div>
             </section>
 
-
-            <!-- KATEGORI FILTER -->
             <section class="tab-panel" data-tab-panel="filter" hidden>
-
               <div class="choice-grid filters">
                 <button class="style-option active" data-style="cinematic" type="button">Cinematic</button>
                 <button class="style-option" data-style="blue" type="button">Moody Blue</button>
@@ -311,124 +189,75 @@
                 <button class="style-option" data-style="soft" type="button">Soft Film</button>
                 <button class="style-option" data-style="deep" type="button">Deep Contrast</button>
               </div>
-
-              <label class="control-field">
-                Intensitas filter
+              <label class="control-field">Intensitas filter
                 <output id="filterStrengthValue">70%</output>
                 <input id="filterStrength" type="range" min="0" max="100" value="70">
               </label>
-
             </section>
 
-
-            <!-- KATEGORI BLUR -->
             <section class="tab-panel" data-tab-panel="blur" hidden>
-
-              <label class="check-row">
-                <input id="enableTextBlur" type="checkbox" checked>
-                Aktifkan blur tipis di belakang teks
-              </label>
-
-              <label class="control-field">
-                Kekuatan blur
+              <label class="check-row"><input id="enableTextBlur" type="checkbox" checked> Aktifkan blur tipis di belakang teks</label>
+              <label class="control-field">Kekuatan blur
                 <output id="blurStrengthValue">4 px</output>
                 <input id="blurStrength" type="range" min="0" max="18" value="4">
               </label>
-
-              <p class="helper">
-                Blur hanya berada di belakang kotak kutipan. Video di area lain tetap terlihat.
-              </p>
-
+              <p class="helper">Blur hanya berada di belakang kotak kutipan. Video di area lain tetap terlihat.</p>
             </section>
 
-
-            <!-- KATEGORI AUDIO -->
             <section class="tab-panel" data-tab-panel="audio" hidden>
-
-              <label class="control-field">
-                Suara video
+              <label class="control-field">Suara video
                 <select id="audioMode">
                   <option value="original">Pertahankan suara asli</option>
                   <option value="mute">Mute · tanpa suara</option>
                 </select>
               </label>
-
             </section>
-
           </div>
 
           <div class="editor-actions">
-            <button class="secondary" id="backToContentBottom" type="button">
-              Kembali
-            </button>
-
-            <button class="primary" id="toExportBottom" type="button">
-              Lanjut Ekspor →
-            </button>
+            <button class="secondary" id="backToContentBottom" type="button">Kembali</button>
+            <button class="primary" id="toExportBottom" type="button">Lanjut Ekspor →</button>
           </div>
-
         </section>
       </div>
     </section>
 
-
-    <!-- HALAMAN 3: EKSPOR -->
-    <section class="stage" data-step="3" hidden>
-
+    <!-- TAHAP 3: EKSPOR -->
+    <section class="stage export-stage" data-step="3" hidden>
       <div class="export-card">
-
         <div class="editor-head">
           <button class="icon-button" id="backToEditor" type="button">‹</button>
-
-          <div class="brand compact">
-            <span class="brand-mark">Q</span>
-            <span>QUIET<span>FRAME</span></span>
-          </div>
-
+          <div class="brand compact"><span class="brand-mark">Q</span><span>QUIET<span>FRAME</span></span></div>
           <span></span>
         </div>
 
         <h1>Ekspor video</h1>
-        <p class="muted">Video vertikal siap dibagikan ke TikTok.</p>
+        <p class="muted">Video vertikal siap dibagikan.</p>
 
         <div class="export-summary">
           <div class="export-thumb">9:16</div>
-          <div>
-            <strong>QuietFrame Video</strong>
-            <small>MP4 · Rasio 9:16 · Tanpa simulasi UI TikTok</small>
-          </div>
+          <div><strong>QuietFrame Video</strong><small>MP4 · Rasio 9:16 · Tanpa simulasi UI TikTok</small></div>
         </div>
 
-        <label class="control-field">
-          Resolusi
+        <label class="control-field">Resolusi
           <select id="resolution">
             <option value="1080">Full HD · 1080 × 1920</option>
             <option value="720">HD · 720 × 1280</option>
           </select>
         </label>
 
-        <label class="control-field">
-          Audio
+        <label class="control-field">Audio
           <select id="audioModeExport">
             <option value="original">Pertahankan suara asli</option>
             <option value="mute">Mute · tanpa suara</option>
           </select>
         </label>
 
-        <button class="primary wide" id="renderBtn" type="button" disabled>
-          Buat video MP4
-        </button>
+        <button class="primary wide" id="renderBtn" type="button" disabled>Buat video MP4</button>
 
         <div class="progress-wrap" id="progressWrap" hidden>
-          <div class="progress-top">
-            <b id="progressTitle">Menyiapkan…</b>
-            <span id="progressPct">0%</span>
-          </div>
-
-          <div class="progress-track">
-            <div id="progressBar"></div>
-          </div>
-
+          <div class="progress-top"><b id="progressTitle">Menyiapkan…</b><span id="progressPct">0%</span></div>
+          <div class="progress-track"><div id="progressBar"></div></div>
           <small id="progressNote"></small>
         </div>
 
@@ -437,23 +266,14 @@
         <div class="output-card" id="outputCard" hidden>
           <strong>✓ Video selesai</strong>
           <small id="outputInfo">MP4 · 9:16</small>
-          <a id="downloadBtn" class="download" href="#" download="quietframe-tiktok.mp4">
-            Unduh MP4 ↓
-          </a>
+          <a id="downloadBtn" class="download" href="#" download="quietframe-tiktok.mp4">Unduh MP4 ↓</a>
         </div>
 
-        <p class="privacy">
-          Pemrosesan dilakukan di browser perangkat. Video tidak diunggah ke server QuietFrame.
-        </p>
-
+        <p class="privacy">Pemrosesan dilakukan di browser perangkat. Video tidak diunggah ke server QuietFrame.</p>
       </div>
     </section>
 
-    <footer>
-      <strong>QUIETFRAME</strong>
-      <span>Created by Doni Sulaeman</span>
-    </footer>
-
+    <footer><strong>QUIETFRAME</strong><span>Created by Doni Sulaeman</span></footer>
   </main>
 
   <script type="module" src="./src/main.js"></script>
