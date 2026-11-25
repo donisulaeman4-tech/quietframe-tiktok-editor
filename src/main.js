@@ -43,14 +43,15 @@ function showError(message) {
 
 function updatePreview() {
   const quote = $('quoteText').value.trim();
+  const blurEnabled = $('enableTextBlur').checked;
+  const blurStrength = Number($('blurStrength').value);
 
   $('previewQuote').textContent =
     quote || 'Hiduplah dengan tenang dan sederhana. Tak perlu semua orang tahu perjalananmu.';
 
   $('charCount').textContent = `${$('quoteText').value.length}/650`;
   $('filterStrengthValue').textContent = `${$('filterStrength').value}%`;
-  $('blurStrengthValue').textContent = $('blurStrength').value;
-
+  $('blurStrengthValue').textContent = `${blurStrength}px`;
   $('textSizeValue').textContent = `${$('textSize').value} px`;
 
   $('previewQuote').style.color = $('textColor').value;
@@ -65,6 +66,12 @@ function updatePreview() {
     `clamp(12px, ${Number($('textSize').value) / 10.8}cqw, 32px)`;
 
   $('quotePanel').dataset.position = $('textPosition').value;
+  $('quotePanel').dataset.blur = blurEnabled ? 'on' : 'off';
+  $('quotePanel').style.setProperty(
+    '--text-blur',
+    `${blurStrength}px`
+  );
+
   $('previewScreen').dataset.style = selectedStyle;
 }
 
@@ -78,7 +85,7 @@ function createTextOverlay(quote, width, height) {
   const color = $('textColor').value;
   const autoFit = $('autoFit').checked;
 
-  const boxWidth = width * 0.88;
+  const boxWidth = Math.floor(width * 0.88 / 2) * 2;
   const padding = width * 0.06;
   const textMaxWidth = boxWidth - padding * 2;
   const maxHeight = height * 0.42;
@@ -121,22 +128,26 @@ function createTextOverlay(quote, width, height) {
   }
 
   const lineHeight = fontSize * 1.35;
-  const boxHeight = Math.max(
-    lineHeight + 70,
-    lines.length * lineHeight + 70
-  );
+  const boxHeight = Math.floor(
+    Math.max(lineHeight + 70, lines.length * lineHeight + 70) / 2
+  ) * 2;
 
   let y = (height - boxHeight) / 2;
   if (position === 'upper') y = height * 0.29;
   if (position === 'lower') y = height * 0.54;
 
   y = Math.max(20, Math.min(y, height - boxHeight - 20));
+  y = Math.floor(y / 2) * 2;
 
-  const x = (width - boxWidth) / 2;
+  const x = Math.floor(((width - boxWidth) / 2) / 2) * 2;
 
+  const blurEnabled = $('enableTextBlur').checked;
+  const blurStrength = Number($('blurStrength').value);
+
+  // Latar transparan agar video tetap terlihat.
   const gradient = ctx.createLinearGradient(x, y, x, y + boxHeight);
-  gradient.addColorStop(0, 'rgba(10,10,14,0.57)');
-  gradient.addColorStop(1, 'rgba(10,10,14,0.72)');
+  gradient.addColorStop(0, 'rgba(10,10,14,0.18)');
+  gradient.addColorStop(1, 'rgba(10,10,14,0.28)');
 
   ctx.fillStyle = gradient;
   ctx.beginPath();
@@ -166,7 +177,17 @@ function createTextOverlay(quote, width, height) {
   });
 
   return new Promise((resolve) => {
-    canvas.toBlob(resolve, 'image/png');
+    canvas.toBlob((blob) => {
+      resolve({
+        blob,
+        x,
+        y,
+        width: boxWidth,
+        height: boxHeight,
+        blurEnabled,
+        blurStrength
+      });
+    }, 'image/png');
   });
 }
 
@@ -237,15 +258,15 @@ async function renderVideo() {
     const width = Number($('resolution').value);
     const height = width * 16 / 9;
 
-    const overlayBlob = await createTextOverlay(quote, width, height);
+    const overlay = await createTextOverlay(quote, width, height);
 
-    if (!overlayBlob) {
+    if (!overlay || !overlay.blob) {
       throw new Error('Gagal membuat teks overlay.');
     }
 
     await ffmpeg.writeFile(
       overlayName,
-      await fetchFile(overlayBlob)
+      await fetchFile(overlay.blob)
     );
 
     const strength = Number($('filterStrength').value) / 100;
@@ -258,15 +279,32 @@ async function renderVideo() {
       `eq=contrast=${1 + strength * 0.18}:saturation=${0.85 + strength * 0.15}`
     ];
 
-    const graph = [
-      `[0:v]${filters.join(',')},${filter}[base]`,
-      `[base][1:v]overlay=0:0:format=auto[outv]`
-    ].join(';');
+    const graphParts = [
+      `[0:v]${filters.join(',')},${filter}[base]`
+    ];
+
+    let videoInput = '[base]';
+
+    if (overlay.blurEnabled && overlay.blurStrength > 0) {
+      const radius = Math.max(1, Math.round(overlay.blurStrength));
+
+      graphParts.push(
+        `[base]split=2[baseclean][blurinput]`,
+        `[blurinput]crop=${overlay.width}:${overlay.height}:${overlay.x}:${overlay.y},boxblur=${radius}:1[blurred]`,
+        `[baseclean][blurred]overlay=${overlay.x}:${overlay.y}[softened]`
+      );
+
+      videoInput = '[softened]';
+    }
+
+    graphParts.push(
+      `${videoInput}[1:v]overlay=0:0:format=auto[outv]`
+    );
 
     const args = [
       '-i', inputName,
       '-i', overlayName,
-      '-filter_complex', graph,
+      '-filter_complex', graphParts.join(';'),
       '-map', '[outv]'
     ];
 
@@ -357,6 +395,7 @@ $('videoFile').addEventListener('change', (event) => {
 $('quoteText').addEventListener('input', updatePreview);
 $('filterStrength').addEventListener('input', updatePreview);
 $('blurStrength').addEventListener('input', updatePreview);
+$('enableTextBlur').addEventListener('change', updatePreview);
 $('textColor').addEventListener('change', updatePreview);
 $('textPosition').addEventListener('change', updatePreview);
 $('textSize').addEventListener('input', updatePreview);
