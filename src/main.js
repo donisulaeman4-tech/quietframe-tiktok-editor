@@ -3,7 +3,7 @@ import { fetchFile, toBlobURL } from "https://esm.sh/@ffmpeg/util@0.12.1";
 
 /* =========================================
    QUIETFRAME — MAIN JAVASCRIPT
-   Versi perbaikan Auto Fit
+   AUTO FIT — SIMETRIS DAN TIKTOK SAFE AREA
 ========================================= */
 
 const $ = (selector) => document.querySelector(selector);
@@ -44,6 +44,29 @@ const state = {
   contrast: 100,
   saturation: 100,
   temperature: 0
+};
+
+/*
+  Area aman dibuat simetris.
+
+  Horizontal:
+  Kiri 18%
+  Kanan 18%
+
+  Vertikal:
+  Atas 20%
+  Bawah 20%
+
+  Area teks:
+  Lebar 64%
+  Tinggi 60%
+*/
+
+const SAFE_AREA = {
+  left: 0.18,
+  right: 0.18,
+  top: 0.20,
+  bottom: 0.20
 };
 
 const FONT_MAP = {
@@ -226,11 +249,19 @@ function getFileExtension(file) {
 }
 
 function getMediaType(file, extension) {
-  if (file.type.startsWith("image/") ||
-      ["jpg", "jpeg", "png", "webp"].includes(extension)) return "image";
+  if (
+    file.type.startsWith("image/") ||
+    ["jpg", "jpeg", "png", "webp"].includes(extension)
+  ) {
+    return "image";
+  }
 
-  if (file.type.startsWith("video/") ||
-      ["mp4", "mov", "m4v", "webm", "3gp"].includes(extension)) return "video";
+  if (
+    file.type.startsWith("video/") ||
+    ["mp4", "mov", "m4v", "webm", "3gp"].includes(extension)
+  ) {
+    return "video";
+  }
 
   return null;
 }
@@ -478,21 +509,24 @@ function wrapText(context, text, maxWidth) {
   return lines;
 }
 
-/* AUTO FIT PREVIEW */
+/* =========================================
+   AUTO FIT — SAFE AREA CALCULATION
+========================================= */
 
-function getPreviewTextWidth() {
-  if (previewQuote) {
-    const quoteWidth = previewQuote.getBoundingClientRect().width;
-    if (quoteWidth > 0) return quoteWidth;
-  }
+function getSafePreviewDimensions() {
+  const width = previewScreen?.clientWidth || 300;
+  const height = previewScreen?.clientHeight || width * 16 / 9;
 
-  if (quotePanelInner) {
-    const innerWidth = quotePanelInner.getBoundingClientRect().width;
-    if (innerWidth > 0) return innerWidth;
-  }
-
-  const screenWidth = previewScreen?.clientWidth || 300;
-  return screenWidth * 0.76;
+  return {
+    width,
+    height,
+    maxWidth: width * (1 - SAFE_AREA.left - SAFE_AREA.right),
+    maxHeight: height * (1 - SAFE_AREA.top - SAFE_AREA.bottom),
+    left: width * SAFE_AREA.left,
+    right: width * (1 - SAFE_AREA.right),
+    top: height * SAFE_AREA.top,
+    bottom: height * (1 - SAFE_AREA.bottom)
+  };
 }
 
 function calculateAutoFitFontSize({
@@ -504,7 +538,9 @@ function calculateAutoFitFontSize({
 }) {
   const requested = Math.max(1, requestedSize);
 
-  if (!state.autoFit || !text.trim()) return requested;
+  if (!state.autoFit || !text.trim()) {
+    return requested;
+  }
 
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
@@ -526,7 +562,9 @@ function calculateAutoFitFontSize({
       lineCount * size * 1.25 +
       Math.max(0, paragraphCount - 1) * paragraphGap;
 
-    if (totalHeight <= maxHeight) break;
+    if (totalHeight <= maxHeight) {
+      break;
+    }
 
     size = Math.max(1, size - 0.5);
   }
@@ -535,23 +573,62 @@ function calculateAutoFitFontSize({
 }
 
 function getPreviewFontSize() {
-  const width = previewScreen?.clientWidth || 300;
-  const height = previewScreen?.clientHeight || width * 16 / 9;
-  const logicalScale = width / 360;
+  const dimensions = getSafePreviewDimensions();
+  const logicalScale = dimensions.width / 360;
 
-  const requestedSize = Math.max(1, state.textSize * logicalScale);
-  const maxWidth = getPreviewTextWidth();
-  const maxHeight = height * 0.36;
+  const requestedSize = Math.max(
+    1,
+    state.textSize * logicalScale
+  );
+
   const gap = state.paragraphGap * logicalScale;
 
   return calculateAutoFitFontSize({
     text: state.text,
     requestedSize,
-    maxWidth,
-    maxHeight,
+    maxWidth: dimensions.maxWidth,
+    maxHeight: dimensions.maxHeight,
     paragraphGap: gap
   });
 }
+
+/*
+  Mengatur kotak teks tepat pada area aman.
+  Aturan ini tetap berlaku walaupun UI TikTok disembunyikan.
+*/
+
+function applyPreviewSafeArea() {
+  if (!quotePanel || !quotePanelInner) return;
+
+  quotePanel.style.position = "absolute";
+  quotePanel.style.left = `${SAFE_AREA.left * 100}%`;
+  quotePanel.style.right = `${SAFE_AREA.right * 100}%`;
+  quotePanel.style.top = `${SAFE_AREA.top * 100}%`;
+  quotePanel.style.bottom = `${SAFE_AREA.bottom * 100}%`;
+
+  quotePanel.style.width = "auto";
+  quotePanel.style.height = "auto";
+  quotePanel.style.minHeight = "0";
+  quotePanel.style.padding = "0";
+  quotePanel.style.boxSizing = "border-box";
+  quotePanel.style.display = "flex";
+  quotePanel.style.justifyContent = "center";
+  quotePanel.style.transform = "none";
+
+  if (state.position === "top") {
+    quotePanel.style.alignItems = "flex-start";
+  } else if (state.position === "bottom") {
+    quotePanel.style.alignItems = "flex-end";
+  } else {
+    quotePanel.style.alignItems = "center";
+  }
+
+  quotePanelInner.style.width = "100%";
+  quotePanelInner.style.maxWidth = "100%";
+  quotePanelInner.style.boxSizing = "border-box";
+}
+
+/* UPDATE PREVIEW */
 
 function updateQuotePreview() {
   if (!previewQuote || !quotePanel || !quotePanelInner) return;
@@ -559,8 +636,16 @@ function updateQuotePreview() {
   state.text = editorQuote?.value ?? state.text;
   previewQuote.textContent = state.text;
 
-  const previewWidth = previewScreen?.clientWidth || 300;
-  const logicalScale = previewWidth / 360;
+  const dimensions = getSafePreviewDimensions();
+  const logicalScale = dimensions.width / 360;
+
+  applyPreviewSafeArea();
+
+  previewQuote.style.width = "100%";
+  previewQuote.style.maxWidth = "100%";
+  previewQuote.style.boxSizing = "border-box";
+  previewQuote.style.overflowWrap = "anywhere";
+  previewQuote.style.whiteSpace = "pre-wrap";
 
   previewQuote.style.color = state.textColor;
   previewQuote.style.fontFamily = FONT_MAP[state.font] || FONT_MAP.serif;
@@ -569,25 +654,13 @@ function updateQuotePreview() {
   previewQuote.style.lineHeight = "1.25";
   previewQuote.style.display = state.textSize === 0 ? "none" : "block";
 
+  /*
+    Ukuran huruf dihitung dari lebar dan tinggi area aman,
+    bukan dari seluruh layar.
+  */
+
   const fontSize = getPreviewFontSize();
   previewQuote.style.fontSize = `${fontSize}px`;
-
-  quotePanel.classList.remove(
-    "position-top",
-    "position-center",
-    "position-bottom"
-  );
-
-  quotePanel.classList.add(`position-${state.position}`);
-
-  const screenHeight = previewScreen?.clientHeight || 0;
-
-  quotePanel.style.setProperty(
-    "--quote-offset",
-    `${(state.offset / 100) * screenHeight * 0.35}px`
-  );
-
-  quotePanel.style.setProperty("--quote-offset-x", `${state.offsetX}%`);
 
   quotePanelInner.style.setProperty(
     "--paragraph-gap",
@@ -600,6 +673,21 @@ function updateQuotePreview() {
   );
 
   quotePanelInner.classList.toggle("blur-active", state.blurEnabled);
+
+  /*
+    Offset manual tetap tersedia.
+    Posisi awal teks tetap berada tepat di tengah area aman.
+  */
+
+  quotePanel.style.setProperty(
+    "--quote-offset",
+    `${(state.offset / 100) * dimensions.height * 0.35}px`
+  );
+
+  quotePanelInner.style.setProperty(
+    "--quote-offset-x",
+    `${state.offsetX}%`
+  );
 }
 
 editorQuote?.addEventListener("input", updateQuotePreview);
@@ -739,8 +827,8 @@ if (quotePanel && previewScreen) {
     if (Math.abs(nextX) < 2.5) nextX = 0;
     if (Math.abs(nextY) < 2.5) nextY = 0;
 
-    state.offsetX = clamp(nextX, -35, 35);
-    state.offset = clamp(nextY, -100, 100);
+    state.offsetX = clamp(nextX, -18, 18);
+    state.offset = clamp(nextY, -60, 60);
 
     if (textOffsetX) textOffsetX.value = state.offsetX;
     if (textOffset) textOffset.value = state.offset;
@@ -980,7 +1068,10 @@ $$('input[name="audioMode"]').forEach((radio) => {
   });
 });
 
-/* CANVAS TEXT OVERLAY FOR EXPORT */
+/* =========================================
+   CANVAS TEXT OVERLAY FOR EXPORT
+   Menggunakan SAFE AREA yang sama.
+========================================= */
 
 function createTextOverlay(width, height) {
   const canvas = document.createElement("canvas");
@@ -995,8 +1086,25 @@ function createTextOverlay(width, height) {
   }
 
   const logicalScale = width / 360;
-  const fontSize = getExportFontSize(width, height, logicalScale);
-  const maxWidth = width * 0.76;
+
+  const safeWidth =
+    width * (1 - SAFE_AREA.left - SAFE_AREA.right);
+
+  const safeHeight =
+    height * (1 - SAFE_AREA.top - SAFE_AREA.bottom);
+
+  const safeLeft = width * SAFE_AREA.left;
+  const safeRight = width * (1 - SAFE_AREA.right);
+  const safeTop = height * SAFE_AREA.top;
+  const safeBottom = height * (1 - SAFE_AREA.bottom);
+
+  const fontSize = getExportFontSize(
+    width,
+    height,
+    logicalScale
+  );
+
+  const maxWidth = safeWidth;
   const gap = state.paragraphGap * logicalScale;
 
   context.font = fontString(fontSize);
@@ -1018,21 +1126,41 @@ function createTextOverlay(width, height) {
     lineCount * lineHeight +
     Math.max(0, paragraphs.length - 1) * gap;
 
-  let centerY = state.position === "top"
-    ? height * 0.28
-    : state.position === "bottom"
-      ? height * 0.70
-      : height * 0.50;
+  /*
+    Posisi vertikal mengikuti area aman:
+    Atas  = bagian atas area aman.
+    Tengah = titik tengah area aman.
+    Bawah = bagian bawah area aman.
+  */
+
+  let centerY;
+
+  if (state.position === "top") {
+    centerY = safeTop + totalHeight / 2;
+  } else if (state.position === "bottom") {
+    centerY = safeBottom - totalHeight / 2;
+  } else {
+    centerY = safeTop + safeHeight / 2;
+  }
 
   centerY += (state.offset / 100) * height * 0.35;
 
-  const xBase = state.alignment === "left"
-    ? width * 0.12
-    : state.alignment === "right"
-      ? width * 0.88
-      : width * 0.50;
+  /*
+    Titik horizontal tetap simetris.
+    Teks rata kiri/kanan tetap berada di dalam area aman.
+  */
 
-  const x = xBase + (state.offsetX / 100) * width;
+  let x;
+
+  if (state.alignment === "left") {
+    x = safeLeft;
+  } else if (state.alignment === "right") {
+    x = safeRight;
+  } else {
+    x = width / 2;
+  }
+
+  x += (state.offsetX / 100) * safeWidth;
 
   if (state.blurEnabled) {
     let widest = 0;
@@ -1049,7 +1177,7 @@ function createTextOverlay(width, height) {
 
     const boxWidth = Math.min(
       widest + padX * 2,
-      width * 0.86
+      safeWidth
     );
 
     const boxHeight = totalHeight + padY * 2;
@@ -1063,6 +1191,12 @@ function createTextOverlay(width, height) {
     if (state.alignment === "right") {
       boxX = x - boxWidth + padX;
     }
+
+    boxX = clamp(
+      boxX,
+      safeLeft,
+      safeRight - boxWidth
+    );
 
     context.save();
 
@@ -1092,7 +1226,7 @@ function createTextOverlay(width, height) {
 
   paragraphs.forEach((lines, index) => {
     (lines.length ? lines : [""]).forEach((line) => {
-      context.fillText(line, x, y);
+      context.fillText(line, x, y, maxWidth);
       y += lineHeight;
     });
 
@@ -1110,8 +1244,12 @@ function getExportFontSize(width, height, logicalScale) {
     state.textSize * logicalScale
   );
 
-  const maxWidth = width * 0.76;
-  const maxHeight = height * 0.36;
+  const maxWidth =
+    width * (1 - SAFE_AREA.left - SAFE_AREA.right);
+
+  const maxHeight =
+    height * (1 - SAFE_AREA.top - SAFE_AREA.bottom);
+
   const gap = state.paragraphGap * logicalScale;
 
   return calculateAutoFitFontSize({
@@ -1521,8 +1659,8 @@ function initialize() {
   }
 
   if (textOffsetX) {
-    textOffsetX.min = "-35";
-    textOffsetX.max = "35";
+    textOffsetX.min = "-18";
+    textOffsetX.max = "18";
   }
 
   if (customDuration) {
