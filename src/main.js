@@ -1,4 +1,3 @@
-
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
@@ -42,27 +41,41 @@ function showError(message) {
 }
 
 function updatePreview() {
-  const quote = $('quoteText').value.trim();
+  const rawQuote = $('quoteText').value;
+  const quote = rawQuote.trim();
   const blurEnabled = $('enableTextBlur').checked;
   const blurStrength = Number($('blurStrength').value);
+  const paragraphGap = Number($('paragraphGap').value);
 
-  $('previewQuote').textContent =
+  const previewQuote = $('previewQuote');
+  const displayQuote =
     quote || 'Hiduplah dengan tenang dan sederhana. Tak perlu semua orang tahu perjalananmu.';
 
-  $('charCount').textContent = `${$('quoteText').value.length}/650`;
+  previewQuote.replaceChildren();
+  previewQuote.style.setProperty('--paragraph-gap', `${paragraphGap}px`);
+
+  displayQuote.split(/\n{2,}/).forEach((paragraph) => {
+    const paragraphElement = document.createElement('span');
+    paragraphElement.className = 'quote-paragraph';
+    paragraphElement.textContent = paragraph;
+    previewQuote.appendChild(paragraphElement);
+  });
+
+  $('charCount').textContent = `${rawQuote.length}/650`;
   $('filterStrengthValue').textContent = `${$('filterStrength').value}%`;
   $('blurStrengthValue').textContent = `${blurStrength}px`;
   $('textSizeValue').textContent = `${$('textSize').value} px`;
+  $('paragraphGapValue').textContent = `${paragraphGap}px`;
 
-  $('previewQuote').style.color = $('textColor').value;
-  $('previewQuote').style.fontFamily = fonts[selectedFont];
-  $('previewQuote').style.fontWeight =
+  previewQuote.style.color = $('textColor').value;
+  previewQuote.style.fontFamily = fonts[selectedFont];
+  previewQuote.style.fontWeight =
     selectedFont === 'bold' ? '900' : '400';
-  $('previewQuote').style.fontStyle =
+  previewQuote.style.fontStyle =
     selectedFont === 'soft' ? 'italic' : 'normal';
 
-  $('previewQuote').style.textAlign = selectedAlignment;
-  $('previewQuote').style.fontSize =
+  previewQuote.style.textAlign = selectedAlignment;
+  previewQuote.style.fontSize =
     `clamp(12px, ${Number($('textSize').value) / 10.8}cqw, 32px)`;
 
   $('quotePanel').dataset.position = $('textPosition').value;
@@ -89,50 +102,94 @@ function createTextOverlay(quote, width, height) {
   const padding = width * 0.06;
   const textMaxWidth = boxWidth - padding * 2;
   const maxHeight = height * 0.42;
-  const words = quote.split(/\s+/);
+  const paragraphGap = Number($('paragraphGap').value) * (width / 1080);
+
+  const paragraphs = quote.replace(/\r\n/g, '\n').split(/\n{2,}/);
 
   let fontSize = Number($('textSize').value) * (width / 1080);
   let lines = [];
+  let paragraphBreaks = 0;
 
   function wrapText(size) {
     ctx.font = `${selectedFont === 'bold' ? '900' : '400'} ${size}px ${fonts[selectedFont]}`;
 
     const result = [];
-    let line = '';
+    let breaks = 0;
 
-    for (const word of words) {
-      const test = line ? `${line} ${word}` : word;
+    paragraphs.forEach((paragraph, paragraphIndex) => {
+      const hardLines = paragraph.split('\n');
 
-      if (ctx.measureText(test).width > textMaxWidth && line) {
-        result.push(line);
-        line = word;
-      } else {
-        line = test;
+      hardLines.forEach((hardLine) => {
+        const words = hardLine.split(/\s+/).filter(Boolean);
+
+        if (words.length === 0) {
+          result.push('');
+          return;
+        }
+
+        let line = '';
+
+        for (const word of words) {
+          const test = line ? `${line} ${word}` : word;
+
+          if (ctx.measureText(test).width > textMaxWidth && line) {
+            result.push(line);
+            line = word;
+          } else {
+            line = test;
+          }
+        }
+
+        if (line) result.push(line);
+      });
+
+      if (paragraphIndex < paragraphs.length - 1) {
+        breaks += 1;
       }
-    }
+    });
 
-    if (line) result.push(line);
-    return result;
+    return {
+      lines: result,
+      paragraphBreaks: breaks
+    };
   }
 
-  lines = wrapText(fontSize);
+  let wrapped = wrapText(fontSize);
+  lines = wrapped.lines;
+  paragraphBreaks = wrapped.paragraphBreaks;
+
+  function totalTextHeight() {
+    return (
+      lines.length * fontSize * 1.35 +
+      paragraphBreaks * paragraphGap
+    );
+  }
 
   if (autoFit) {
     while (
-      lines.length * fontSize * 1.35 > maxHeight &&
+      totalTextHeight() > maxHeight &&
       fontSize > 18 * (width / 1080)
     ) {
       fontSize -= 2 * (width / 1080);
-      lines = wrapText(fontSize);
+      wrapped = wrapText(fontSize);
+      lines = wrapped.lines;
+      paragraphBreaks = wrapped.paragraphBreaks;
     }
   }
 
   const lineHeight = fontSize * 1.35;
+  const contentHeight = totalTextHeight();
+  const boxPadding = Math.max(35, width * 0.032);
+
   const boxHeight = Math.floor(
-    Math.max(lineHeight + 70, lines.length * lineHeight + 70) / 2
+    Math.max(
+      lineHeight + boxPadding * 2,
+      contentHeight + boxPadding * 2
+    ) / 2
   ) * 2;
 
   let y = (height - boxHeight) / 2;
+
   if (position === 'upper') y = height * 0.29;
   if (position === 'lower') y = height * 0.54;
 
@@ -144,10 +201,16 @@ function createTextOverlay(quote, width, height) {
   const blurEnabled = $('enableTextBlur').checked;
   const blurStrength = Number($('blurStrength').value);
 
-  // Latar transparan agar video tetap terlihat.
-  const gradient = ctx.createLinearGradient(x, y, x, y + boxHeight);
-  gradient.addColorStop(0, 'rgba(10,10,14,0.18)');
-  gradient.addColorStop(1, 'rgba(10,10,14,0.28)');
+  // Panel dibuat tipis agar video di belakang tetap terlihat.
+  const gradient = ctx.createLinearGradient(
+    x,
+    y,
+    x,
+    y + boxHeight
+  );
+
+  gradient.addColorStop(0, 'rgba(10,10,14,0.12)');
+  gradient.addColorStop(1, 'rgba(10,10,14,0.20)');
 
   ctx.fillStyle = gradient;
   ctx.beginPath();
@@ -167,13 +230,54 @@ function createTextOverlay(quote, width, height) {
     textX = x + boxWidth - padding;
   }
 
-  lines.forEach((line, index) => {
-    ctx.fillText(
-      line,
-      textX,
-      y + 35 + index * lineHeight + lineHeight / 2,
-      textMaxWidth
+  let cursorY =
+    y + (boxHeight - contentHeight) / 2 + lineHeight / 2;
+
+  let lineIndex = 0;
+
+  paragraphs.forEach((paragraph, paragraphIndex) => {
+    const paragraphLineCount = paragraph.split('\n').reduce(
+      (count, hardLine) => {
+        const words = hardLine.split(/\s+/).filter(Boolean);
+
+        if (words.length === 0) return count + 1;
+
+        let line = '';
+        let wrappedCount = 0;
+
+        for (const word of words) {
+          const test = line ? `${line} ${word}` : word;
+
+          if (ctx.measureText(test).width > textMaxWidth && line) {
+            wrappedCount += 1;
+            line = word;
+          } else {
+            line = test;
+          }
+        }
+
+        return count + wrappedCount + (line ? 1 : 0);
+      },
+      0
     );
+
+    for (let i = 0; i < paragraphLineCount; i += 1) {
+      const line = lines[lineIndex] ?? '';
+
+      ctx.fillText(
+        line,
+        textX,
+        cursorY,
+        textMaxWidth
+      );
+
+      cursorY += lineHeight;
+      lineIndex += 1;
+    }
+
+    if (paragraphIndex < paragraphs.length - 1) {
+      cursorY += paragraphGap;
+    }
   });
 
   return new Promise((resolve) => {
@@ -253,12 +357,19 @@ async function renderVideo() {
     const outputName = 'quietframe-output.mp4';
     const overlayName = 'quote-overlay.png';
 
-    await ffmpeg.writeFile(inputName, await fetchFile(sourceFile));
+    await ffmpeg.writeFile(
+      inputName,
+      await fetchFile(sourceFile)
+    );
 
     const width = Number($('resolution').value);
     const height = width * 16 / 9;
 
-    const overlay = await createTextOverlay(quote, width, height);
+    const overlay = await createTextOverlay(
+      quote,
+      width,
+      height
+    );
 
     if (!overlay || !overlay.blob) {
       throw new Error('Gagal membuat teks overlay.');
@@ -286,7 +397,10 @@ async function renderVideo() {
     let videoInput = '[base]';
 
     if (overlay.blurEnabled && overlay.blurStrength > 0) {
-      const radius = Math.max(1, Math.round(overlay.blurStrength));
+      const radius = Math.max(
+        1,
+        Math.round(overlay.blurStrength)
+      );
 
       graphParts.push(
         `[base]split=2[baseclean][blurinput]`,
@@ -333,6 +447,7 @@ async function renderVideo() {
     await ffmpeg.exec(args);
 
     const data = await ffmpeg.readFile(outputName);
+
     const blob = new Blob([data.buffer], {
       type: 'video/mp4'
     });
@@ -384,6 +499,7 @@ $('videoFile').addEventListener('change', (event) => {
   }
 
   previewUrl = URL.createObjectURL(file);
+
   $('previewVideo').src = previewUrl;
   $('previewVideo').load();
   $('previewVideo').play().catch(() => {});
@@ -395,11 +511,26 @@ $('videoFile').addEventListener('change', (event) => {
 $('quoteText').addEventListener('input', updatePreview);
 $('filterStrength').addEventListener('input', updatePreview);
 $('blurStrength').addEventListener('input', updatePreview);
+$('paragraphGap').addEventListener('input', updatePreview);
 $('enableTextBlur').addEventListener('change', updatePreview);
 $('textColor').addEventListener('change', updatePreview);
 $('textPosition').addEventListener('change', updatePreview);
 $('textSize').addEventListener('input', updatePreview);
 $('autoFit').addEventListener('change', updatePreview);
+
+$('previewExpand').addEventListener('click', () => {
+  const column = $('previewColumn');
+  const expanded = column.classList.toggle('preview-expanded');
+
+  $('previewExpand').setAttribute(
+    'aria-expanded',
+    String(expanded)
+  );
+
+  $('previewExpand').textContent = expanded
+    ? 'Perkecil preview ↙'
+    : 'Perbesar preview ↗';
+});
 
 document.querySelectorAll('[data-align]').forEach((button) => {
   button.addEventListener('click', () => {
@@ -407,6 +538,7 @@ document.querySelectorAll('[data-align]').forEach((button) => {
 
     document.querySelectorAll('[data-align]').forEach((item) => {
       const active = item === button;
+
       item.classList.toggle('active', active);
       item.setAttribute('aria-pressed', String(active));
     });
