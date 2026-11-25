@@ -1,3 +1,4 @@
+
 import { FFmpeg } from "https://esm.sh/@ffmpeg/ffmpeg@0.12.6";
 import { fetchFile, toBlobURL } from "https://esm.sh/@ffmpeg/util@0.12.1";
 
@@ -168,6 +169,302 @@ const exportError = $("#exportError");
 const audioGroup = $("#audioGroup");
 
 let fullscreenButton = null;
+
+
+/* =========================================
+   AUTO SAVE & RESTORE — INDEXEDDB
+   Menyimpan pengaturan dan file media.
+========================================= */
+
+const SESSION_DB_NAME = "quietframe-session-db";
+const SESSION_DB_VERSION = 1;
+const SESSION_STORE_NAME = "sessions";
+const SESSION_KEY = "current";
+
+let sessionDBPromise = null;
+let sessionSaveTimer = null;
+let restoringSession = false;
+
+function openSessionDB() {
+  if (sessionDBPromise) return sessionDBPromise;
+  sessionDBPromise = new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) {
+      reject(new Error("Browser tidak mendukung IndexedDB."));
+      return;
+    }
+    const request = indexedDB.open(SESSION_DB_NAME, SESSION_DB_VERSION);
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains(SESSION_STORE_NAME)) {
+        database.createObjectStore(SESSION_STORE_NAME);
+      }
+    };
+    request.onsuccess = () => {
+      const database = request.result;
+      database.onversionchange = () => database.close();
+      resolve(database);
+    };
+    request.onerror = () => reject(request.error);
+  });
+  return sessionDBPromise;
+}
+
+function getSessionSnapshot() {
+  const textValue = state.stage === 1
+    ? (quoteInput?.value ?? state.text)
+    : (editorQuote?.value ?? state.text);
+  return {
+    version: 1,
+    savedAt: Date.now(),
+    state: {
+      stage: state.stage,
+      duration: state.duration,
+      resolution: state.resolution,
+      text: textValue,
+      textSize: state.textSize,
+      textColor: state.textColor,
+      font: state.font,
+      position: state.position,
+      alignment: state.alignment,
+      offset: state.offset,
+      offsetX: state.offsetX,
+      autoFit: state.autoFit,
+      paragraphGap: state.paragraphGap,
+      blurEnabled: state.blurEnabled,
+      blurStrength: state.blurStrength,
+      filter: state.filter,
+      brightness: state.brightness,
+      contrast: state.contrast,
+      saturation: state.saturation,
+      temperature: state.temperature,
+      mediaType: state.mediaType,
+      mediaExtension: state.mediaExtension,
+      fileName: state.file?.name || "",
+      fileType: state.file?.type || "",
+      fileLastModified: state.file?.lastModified || Date.now(),
+      customDuration: customDuration?.value || "",
+      audioMode: $('input[name="audioMode"]:checked')?.value || "original",
+      activePanel: $(".settings-panel.active")?.id || "panel-text",
+      activeTab: $(".tool-tab.active")?.dataset.panel || "text",
+      tiktokHidden: Boolean(mockTikTokUI?.classList.contains("hidden"))
+    },
+    file: state.file || null
+  };
+}
+
+async function saveSessionNow() {
+  if (restoringSession) return;
+  try {
+    const database = await openSessionDB();
+    const snapshot = getSessionSnapshot();
+    await new Promise((resolve, reject) => {
+      const transaction = database.transaction(SESSION_STORE_NAME, "readwrite");
+      transaction.objectStore(SESSION_STORE_NAME).put(snapshot, SESSION_KEY);
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error);
+    });
+  } catch (error) {
+    console.warn("[QuietFrame] Sesi belum dapat disimpan:", error);
+  }
+}
+
+function scheduleSessionSave() {
+  if (restoringSession) return;
+  clearTimeout(sessionSaveTimer);
+  sessionSaveTimer = setTimeout(saveSessionNow, 350);
+}
+
+async function readSavedSession() {
+  const database = await openSessionDB();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(SESSION_STORE_NAME, "readonly");
+    const request = transaction.objectStore(SESSION_STORE_NAME).get(SESSION_KEY);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function restoreMediaFile(file, mediaType, extension) {
+  if (!file || !mediaType) return;
+  revokeMediaURL();
+  state.file = file;
+  state.mediaType = mediaType;
+  state.mediaExtension = extension || getFileExtension(file);
+  state.sourceDuration = null;
+  state.mediaURL = URL.createObjectURL(file);
+  previewVideo?.pause();
+
+  if (previewVideo) {
+    previewVideo.removeAttribute("src");
+    previewVideo.load();
+    previewVideo.style.display = "none";
+  }
+  if (previewImage) {
+    previewImage.removeAttribute("src");
+    previewImage.style.display = "none";
+  }
+
+  if (mediaType === "video" && previewVideo) {
+    previewVideo.src = state.mediaURL;
+    previewVideo.style.display = "block";
+    previewVideo.load();
+    previewVideo.onloadedmetadata = () => {
+      state.sourceDuration = Number.isFinite(previewVideo.duration)
+        ? previewVideo.duration
+        : null;
+      updateDurationHint();
+    };
+    if (previewPlay) previewPlay.hidden = false;
+    if (audioGroup) audioGroup.style.display = "";
+  } else if (mediaType === "image" && previewImage) {
+    previewImage.src = state.mediaURL;
+    previewImage.style.display = "block";
+    if (previewPlay) previewPlay.hidden = true;
+    if (audioGroup) audioGroup.style.display = "none";
+  }
+
+  setText(videoFileName, file.name);
+  setText(videoFileSize, formatFileSize(file.size));
+  setText(fileTypeIcon, mediaType === "image" ? "FOTO" : "VIDEO");
+  selectedVideo?.classList.add("visible");
+  uploadButton?.classList.add("has-video");
+  updateCharacterCount();
+  updateDurationHint();
+}
+
+async function restoreSession() {
+  try {
+    const saved = await readSavedSession();
+    if (!saved?.state) return;
+    restoringSession = true;
+    const savedState = saved.state;
+
+    [
+      "duration", "resolution", "textSize", "offset", "offsetX",
+      "paragraphGap", "blurStrength", "brightness", "contrast",
+      "saturation", "temperature"
+    ].forEach((key) => {
+      if (savedState[key] !== undefined && Number.isFinite(Number(savedState[key]))) {
+        state[key] = Number(savedState[key]);
+      }
+    });
+    ["autoFit", "blurEnabled"].forEach((key) => {
+      if (typeof savedState[key] === "boolean") state[key] = savedState[key];
+    });
+    [
+      "text", "textColor", "font", "position", "alignment", "filter"
+    ].forEach((key) => {
+      if (typeof savedState[key] === "string") state[key] = savedState[key];
+    });
+
+    if (saved.file instanceof Blob && savedState.mediaType) {
+      const restoredFile = new File(
+        [saved.file],
+        savedState.fileName || "quietframe-media",
+        {
+          type: savedState.fileType || saved.file.type || "",
+          lastModified: savedState.fileLastModified || Date.now()
+        }
+      );
+      restoreMediaFile(restoredFile, savedState.mediaType, savedState.mediaExtension);
+    }
+
+    if (quoteInput) quoteInput.value = state.text;
+    if (editorQuote) editorQuote.value = state.text;
+
+    const controlValues = {
+      textSize: state.textSize,
+      textOffset: state.offset,
+      textOffsetX: state.offsetX,
+      paragraphGap: state.paragraphGap,
+      blurStrength: state.blurStrength,
+      brightness: state.brightness,
+      contrast: state.contrast,
+      saturation: state.saturation,
+      temperature: state.temperature
+    };
+    Object.entries(controlValues).forEach(([id, value]) => {
+      const control = $("#" + id);
+      if (control) control.value = String(value);
+    });
+
+    if (textColor) {
+      const hasColor = [...textColor.options].some(
+        (option) => option.value.toLowerCase() === state.textColor.toLowerCase()
+      );
+      textColor.value = hasColor ? state.textColor : "#ffffff";
+    }
+    if (customTextColor) customTextColor.value = state.textColor;
+    if (autoFit) autoFit.checked = state.autoFit;
+    if (blurEnabled) blurEnabled.checked = state.blurEnabled;
+    if (resolution) resolution.value = String(state.resolution);
+    if (customDuration) customDuration.value = savedState.customDuration || "";
+    setDuration(state.duration, false);
+
+    $$('input[name="audioMode"]').forEach((radio) => {
+      radio.checked = radio.value === savedState.audioMode;
+    });
+    $$(".audio-option").forEach((option) => {
+      option.classList.toggle("active", Boolean(option.querySelector("input")?.checked));
+    });
+    $$(".position-button").forEach((button) => {
+      button.classList.toggle("active", button.dataset.position === state.position);
+    });
+    $$(".align-button").forEach((button) => {
+      button.classList.toggle("active", button.dataset.align === state.alignment);
+    });
+    $$(".font-option").forEach((button) => {
+      button.classList.toggle("active", button.dataset.font === state.font);
+    });
+    $$(".filter-option").forEach((button) => {
+      button.classList.toggle("active", button.dataset.filter === state.filter);
+    });
+
+    const activePanel = savedState.activePanel || "panel-text";
+    const activeTab = savedState.activeTab || "text";
+    $$(".settings-panel").forEach((panel) => {
+      panel.classList.toggle("active", panel.id === activePanel);
+    });
+    $$(".tool-tab").forEach((button) => {
+      button.classList.toggle("active", button.dataset.panel === activeTab);
+    });
+    mockTikTokUI?.classList.toggle("hidden", Boolean(savedState.tiktokHidden));
+    toggleTikTokUI?.classList.toggle("active", !savedState.tiktokHidden);
+
+    setText(textSizeValue, String(state.textSize));
+    setText(textOffsetValue, `${state.offset}%`);
+    setText(textOffsetXValue, `${state.offsetX}%`);
+    setText(paragraphGapValue, `${state.paragraphGap}px`);
+    setText(blurStrengthValue, String(state.blurStrength));
+    setText($("#brightnessValue"), `${state.brightness}%`);
+    setText($("#contrastValue"), `${state.contrast}%`);
+    setText($("#saturationValue"), `${state.saturation}%`);
+    setText($("#temperatureValue"), String(state.temperature));
+
+    updateCharacterCount();
+    updateQuotePreview();
+    updateMediaAppearance();
+    updateDurationHint();
+    showStage(saved.file ? clamp(Number(savedState.stage) || 1, 1, 3) : 1);
+    console.info("[QuietFrame] Sesi terakhir berhasil dipulihkan.");
+  } catch (error) {
+    console.warn("[QuietFrame] Sesi sebelumnya tidak dapat dipulihkan:", error);
+  } finally {
+    restoringSession = false;
+  }
+}
+
+document.addEventListener("input", scheduleSessionSave);
+document.addEventListener("change", scheduleSessionSave);
+document.addEventListener("click", scheduleSessionSave);
+document.addEventListener("pointerup", scheduleSessionSave);
+
+window.addEventListener("pagehide", () => {
+  clearTimeout(sessionSaveTimer);
+  saveSessionNow();
+});
+
 
 /* UTILITIES */
 
@@ -1263,48 +1560,63 @@ function getExportFontSize(width, height, logicalScale) {
 
 /* FFMPEG */
 
+let ffmpegLoadPromise = null;
+
 async function loadFFmpeg() {
   if (state.ffmpegReady) return;
+  if (ffmpegLoadPromise) return ffmpegLoadPromise;
 
-  if (!state.ffmpeg) {
-    state.ffmpeg = new FFmpeg();
-  }
+  ffmpegLoadPromise = (async () => {
+    updateProgress(2, "Memuat mesin ekspor...");
+    const cdnBases = [
+      "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd",
+      "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd"
+    ];
+    let lastError = null;
 
-  state.ffmpeg.on("progress", ({ progress }) => {
-    if (!state.exporting) return;
+    for (const baseURL of cdnBases) {
+      try {
+        if (!state.ffmpeg) {
+          state.ffmpeg = new FFmpeg();
+          state.ffmpeg.on("progress", ({ progress }) => {
+            if (!state.exporting) return;
+            const percent = clamp(40 + Math.round(progress * 53), 40, 93);
+            setText(progressPercent, `${percent}%`);
+            if (progressBar) progressBar.style.width = `${percent}%`;
+          });
+          state.ffmpeg.on("log", ({ message }) => {
+            console.log("[QuietFrame FFmpeg]", message);
+          });
+        }
 
-    const percent = clamp(
-      Math.round(progress * 100),
-      0,
-      99
-    );
-
-    setText(progressPercent, `${percent}%`);
-
-    if (progressBar) {
-      progressBar.style.width = `${percent}%`;
+        updateProgress(3, "Mengunduh mesin ekspor...");
+        await state.ffmpeg.load({
+          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm")
+        });
+        state.ffmpegReady = true;
+        return;
+      } catch (error) {
+        lastError = error;
+        console.warn("[QuietFrame] CDN FFmpeg gagal:", baseURL, error);
+        try {
+          await state.ffmpeg?.terminate();
+        } catch {}
+        state.ffmpeg = null;
+        state.ffmpegReady = false;
+      }
     }
-  });
 
-  state.ffmpeg.on("log", ({ message }) => {
-    console.log("[QuietFrame FFmpeg]", message);
-  });
+    throw new Error(
+      `Mesin ekspor gagal dimuat dari kedua server. Periksa koneksi internet lalu coba lagi. ${lastError?.message || ""}`
+    );
+  })();
 
-  const baseURL =
-    "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
-
-  await state.ffmpeg.load({
-    coreURL: await toBlobURL(
-      `${baseURL}/ffmpeg-core.js`,
-      "text/javascript"
-    ),
-    wasmURL: await toBlobURL(
-      `${baseURL}/ffmpeg-core.wasm`,
-      "application/wasm"
-    )
-  });
-
-  state.ffmpegReady = true;
+  try {
+    await ffmpegLoadPromise;
+  } finally {
+    ffmpegLoadPromise = null;
+  }
 }
 
 function getOutputDimensions() {
@@ -1677,3 +1989,4 @@ function initialize() {
 }
 
 initialize();
+restoreSession();
