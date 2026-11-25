@@ -171,10 +171,7 @@ function showStage(step) {
   state.stage = step;
 
   $$(".stage").forEach((stage) => {
-    stage.classList.toggle(
-      "active",
-      Number(stage.dataset.step) === step
-    );
+    stage.classList.toggle("active", Number(stage.dataset.step) === step);
   });
 
   document.body.dataset.stage = String(step);
@@ -185,6 +182,11 @@ function updateCharacterCount() {
   const value = quoteInput?.value || "";
   setText(characterCount, `${value.length}/500`);
   if (startEditing) startEditing.disabled = !state.file;
+}
+
+function fontString(size) {
+  const weight = state.font === "bold" ? "900 " : "";
+  return `${weight}${size}px ${FONT_MAP[state.font] || FONT_MAP.serif}`;
 }
 
 /* =========================================
@@ -243,10 +245,6 @@ removeVideo?.addEventListener("click", () => {
   updateCharacterCount();
 });
 
-previewVideo?.addEventListener("error", () => {
-  if (state.file) console.warn("Video tidak dapat diputar pada pratinjau.");
-});
-
 /* =========================================
    STAGE 1 & NAVIGATION
 ========================================= */
@@ -278,7 +276,7 @@ backToUpload?.addEventListener("click", () => {
 });
 
 continueToExport?.addEventListener("click", () => {
-  state.text = editorQuote?.value || state.text;
+  state.text = editorQuote?.value ?? state.text;
   updateQuotePreview();
   updateDurationHint();
 
@@ -343,21 +341,111 @@ $$(".tool-tab").forEach((button) => {
 });
 
 /* =========================================
-   QUOTE TEXT PREVIEW
+   TEXT WRAPPING
 ========================================= */
 
-editorQuote?.addEventListener("input", () => {
-  state.text = editorQuote.value;
-  updateQuotePreview();
-});
+function wrapText(context, text, maxWidth) {
+  const lines = [];
 
-function fontString(size) {
-  const weight = state.font === "bold" ? "900 " : "";
-  return `${weight}${size}px ${FONT_MAP[state.font] || FONT_MAP.serif}`;
+  text.split("\n").forEach((paragraph) => {
+    if (!paragraph.trim()) {
+      lines.push("");
+      return;
+    }
+
+    let line = "";
+
+    paragraph.split(/\s+/).forEach((word) => {
+      let test = line ? `${line} ${word}` : word;
+
+      if (context.measureText(test).width > maxWidth && line) {
+        lines.push(line);
+        line = word;
+        test = word;
+      } else {
+        line = test;
+      }
+
+      /* Pecah kata yang sangat panjang agar tidak keluar area */
+      if (context.measureText(line).width > maxWidth) {
+        let part = "";
+        for (const char of line) {
+          const candidate = part + char;
+          if (context.measureText(candidate).width > maxWidth && part) {
+            lines.push(part);
+            part = char;
+          } else {
+            part = candidate;
+          }
+        }
+        line = part;
+      }
+    });
+
+    if (line) lines.push(line);
+  });
+
+  return lines;
 }
 
+/* =========================================
+   QUOTE PREVIEW & AUTO FIT
+========================================= */
+
 function getPreviewFontSize() {
+  if (!previewQuote) return state.textSize;
   return Number.parseFloat(getComputedStyle(previewQuote).fontSize) || state.textSize;
+}
+
+function getFittedFontSize(maxWidth, maxHeight, baseSize, gap) {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  if (!context) return baseSize;
+
+  let size = Math.max(1, baseSize);
+
+  while (size > 1) {
+    context.font = fontString(size);
+    const lines = wrapText(context, state.text, maxWidth);
+    const paragraphCount = state.text.split("\n").length;
+    const height =
+      lines.length * size * 1.25 +
+      Math.max(0, paragraphCount - 1) * gap;
+
+    if (height <= maxHeight) break;
+    size--;
+  }
+
+  return Math.max(1, size);
+}
+
+function applyPreviewAutoFit() {
+  if (!previewQuote || !previewScreen) return;
+
+  if (state.textSize === 0) {
+    previewQuote.style.display = "none";
+    return;
+  }
+
+  previewQuote.style.display = "block";
+
+  const width = previewScreen.clientWidth;
+  const height = previewScreen.clientHeight;
+  if (!width || !height) return;
+
+  if (!state.autoFit) {
+    previewQuote.style.fontSize = `${state.textSize}px`;
+    return;
+  }
+
+  const size = getFittedFontSize(
+    width * 0.76,
+    height * 0.36,
+    state.textSize,
+    state.paragraphGap
+  );
+
+  previewQuote.style.fontSize = `${size}px`;
 }
 
 function updateQuotePreview() {
@@ -386,11 +474,7 @@ function updateQuotePreview() {
     "--quote-offset",
     `${(state.offset / 100) * screenHeight * 0.35}px`
   );
-
-  quotePanel.style.setProperty(
-    "--quote-offset-x",
-    `${state.offsetX}%`
-  );
+  quotePanel.style.setProperty("--quote-offset-x", `${state.offsetX}%`);
 
   quotePanelInner.style.setProperty(
     "--paragraph-gap",
@@ -403,92 +487,32 @@ function updateQuotePreview() {
   applyPreviewAutoFit();
 }
 
-function wrapText(context, text, maxWidth) {
-  const lines = [];
-
-  text.split("\n").forEach((paragraph) => {
-    if (!paragraph.trim()) {
-      lines.push("");
-      return;
-    }
-
-    let line = "";
-
-    paragraph.split(/\s+/).forEach((word) => {
-      const test = line ? `${line} ${word}` : word;
-
-      if (context.measureText(test).width > maxWidth && line) {
-        lines.push(line);
-        line = word;
-      } else {
-        line = test;
-      }
-    });
-
-    if (line) lines.push(line);
-  });
-
-  return lines;
-}
-
-function applyPreviewAutoFit() {
-  if (!previewQuote || !previewScreen) return;
-
-  if (!state.autoFit || state.textSize <= 0) {
-    previewQuote.style.fontSize = `${state.textSize}px`;
-    return;
-  }
-
-  const width = previewScreen.clientWidth;
-  const height = previewScreen.clientHeight;
-  if (!width || !height) return;
-
-  const maxWidth = width * 0.76;
-  const maxHeight = height * 0.36;
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d");
-
-  let size = state.textSize;
-
-  while (size > 1) {
-    context.font = fontString(size);
-    const lines = wrapText(context, state.text, maxWidth);
-    const paragraphCount = state.text.split("\n").length;
-    const estimatedHeight =
-      lines.length * size * 1.25 +
-      Math.max(0, paragraphCount - 1) * state.paragraphGap;
-
-    if (estimatedHeight <= maxHeight) break;
-    size--;
-  }
-
-  previewQuote.style.fontSize = `${Math.max(1, size)}px`;
-}
+editorQuote?.addEventListener("input", updateQuotePreview);
 
 /* =========================================
    TEXT SLIDERS
 ========================================= */
 
 [
-  ["textSize", "textSizeValue", (v) => {
-    state.textSize = Number(v);
-    return `${v}px`;
+  ["textSize", "textSizeValue", (value) => {
+    state.textSize = Number(value);
+    return `${value}px`;
   }],
-  ["textOffset", "textOffsetValue", (v) => {
-    state.offset = Number(v);
-    return `${v}%`;
+  ["textOffset", "textOffsetValue", (value) => {
+    state.offset = Number(value);
+    return `${value}%`;
   }],
-  ["textOffsetX", "textOffsetXValue", (v) => {
-    state.offsetX = Number(v);
-    return `${v}%`;
+  ["textOffsetX", "textOffsetXValue", (value) => {
+    state.offsetX = Number(value);
+    return `${value}%`;
   }],
-  ["paragraphGap", "paragraphGapValue", (v) => {
-    state.paragraphGap = Number(v);
-    return `${v}px`;
+  ["paragraphGap", "paragraphGapValue", (value) => {
+    state.paragraphGap = Number(value);
+    return `${value}px`;
   }],
-  ["blurStrength", "blurStrengthValue", (v) => {
-    state.blurStrength = Number(v);
-    return v;
+  ["blurStrength", "blurStrengthValue", (value) => {
+    state.blurStrength = Number(value);
+    return value;
   }]
 ].forEach(([inputId, outputId, update]) => {
   const input = $(`#${inputId}`);
@@ -518,7 +542,7 @@ customTextColor?.addEventListener("input", () => {
 });
 
 /* =========================================
-   TEXT POSITION & ALIGNMENT
+   POSITION & ALIGNMENT
 ========================================= */
 
 $$(".position-button").forEach((button) => {
@@ -570,7 +594,7 @@ if (quotePanel && previewScreen) {
 
   quotePanel.addEventListener("pointerdown", (event) => {
     if (event.target.closest("button, input, textarea")) return;
-    if (!state.text.trim()) return;
+    if (!state.text.trim() || state.textSize === 0) return;
 
     dragging = true;
     startX = event.clientX;
@@ -677,12 +701,11 @@ function updateVideoAppearance() {
   ["temperature", "temperatureValue", "temperature", ""]
 ].forEach(([id, outputId, key, suffix]) => {
   const input = $(`#${id}`);
-  const output = $(`#${outputId}`);
   if (!input) return;
 
   input.addEventListener("input", () => {
     state[key] = Number(input.value);
-    setText(output, `${input.value}${suffix}`);
+    setText($(`#${outputId}`), `${input.value}${suffix}`);
     updateVideoAppearance();
   });
 });
@@ -794,8 +817,24 @@ $$('input[name="audioMode"]').forEach((radio) => {
 });
 
 /* =========================================
-   EXPORT TEXT OVERLAY
+   CANVAS TEXT OVERLAY
 ========================================= */
+
+function drawRoundedRect(context, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+
+  context.beginPath();
+  context.moveTo(x + r, y);
+  context.lineTo(x + width - r, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + r);
+  context.lineTo(x + width, y + height - r);
+  context.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  context.lineTo(x + r, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - r);
+  context.lineTo(x, y + r);
+  context.quadraticCurveTo(x, y, x + r, y);
+  context.closePath();
+}
 
 function createTextOverlay(width, height) {
   const canvas = document.createElement("canvas");
@@ -808,48 +847,26 @@ function createTextOverlay(width, height) {
   if (!state.text.trim() || state.textSize === 0) return canvas;
 
   const previewWidth = previewScreen?.clientWidth || 300;
-  const previewHeight = previewScreen?.clientHeight || previewWidth * 16 / 9;
-
   const scale = width / previewWidth;
   const safeWidth = width * 0.76;
   const safeHeight = height * 0.36;
 
-  let fontSize = state.autoFit
-    ? getPreviewFontSize() * scale
-    : state.textSize * scale;
-
-  fontSize = Math.max(1, fontSize);
-
-  const paragraphSpacing = state.paragraphGap * scale;
-
-  function measureLines(size) {
-    context.font = fontString(size * scale);
-    return wrapText(context, state.text, safeWidth);
-  }
-
-  let lines = measureLines(fontSize / scale);
+  let previewFontSize = state.textSize;
 
   if (state.autoFit) {
-    while (fontSize > 1) {
-      context.font = fontString(fontSize);
-      lines = wrapText(context, state.text, safeWidth);
-
-      const paragraphCount = state.text.split("\n").length;
-      const totalHeight =
-        lines.length * fontSize * 1.25 +
-        Math.max(0, paragraphCount - 1) * paragraphSpacing;
-
-      if (totalHeight <= safeHeight) break;
-      fontSize--;
-    }
+    previewFontSize = getFittedFontSize(
+      previewWidth * 0.76,
+      (previewScreen?.clientHeight || previewWidth * 16 / 9) * 0.36,
+      state.textSize,
+      state.paragraphGap
+    );
   }
 
+  const fontSize = Math.max(1, previewFontSize * scale);
+  const paragraphSpacing = state.paragraphGap * scale;
   context.font = fontString(fontSize);
   context.textAlign = state.alignment;
   context.textBaseline = "middle";
-  context.fillStyle = state.textColor;
-
-  const lineHeight = fontSize * 1.25;
 
   const paragraphLines = state.text.split("\n").map((paragraph) => {
     return wrapText(context, paragraph, safeWidth);
@@ -858,6 +875,39 @@ function createTextOverlay(width, height) {
   let totalHeight = 0;
 
   paragraphLines.forEach((paragraph, index) => {
+    totalHeight += Math.max(1, paragraph.length) * fontSize * 1.25;
+    if (index < paragraphLines.length - 1) totalHeight += paragraphSpacing;
+  });
+
+  /* Jika auto-fit aktif, pastikan tinggi teks tidak melewati batas */
+  if (state.autoFit && totalHeight > safeHeight) {
+    let adjusted = fontSize;
+
+    while (adjusted > 1 && totalHeight > safeHeight) {
+      adjusted -= 1;
+      context.font = fontString(adjusted);
+
+      const newLines = state.text.split("\n").map((paragraph) => {
+        return wrapText(context, paragraph, safeWidth);
+      });
+
+      totalHeight = 0;
+      newLines.forEach((paragraph, index) => {
+        totalHeight += Math.max(1, paragraph.length) * adjusted * 1.25;
+        if (index < newLines.length - 1) totalHeight += paragraphSpacing;
+      });
+
+      paragraphLines.splice(0, paragraphLines.length, ...newLines);
+    }
+
+    context.font = fontString(adjusted);
+  }
+
+  const finalFontSize = Number.parseFloat(context.font.match(/(\d+(?:\.\d+)?)px/)?.[1]) || fontSize;
+  const lineHeight = finalFontSize * 1.25;
+
+  totalHeight = 0;
+  paragraphLines.forEach((paragraph, index) => {
     totalHeight += Math.max(1, paragraph.length) * lineHeight;
     if (index < paragraphLines.length - 1) totalHeight += paragraphSpacing;
   });
@@ -865,7 +915,7 @@ function createTextOverlay(width, height) {
   let centerY = state.position === "top"
     ? height * 0.28
     : state.position === "bottom"
-      ? height * 0.68
+      ? height * 0.70
       : height * 0.50;
 
   centerY += (state.offset / 100) * height * 0.35;
@@ -885,8 +935,8 @@ function createTextOverlay(width, height) {
       widestLine = Math.max(widestLine, context.measureText(line).width);
     });
 
-    const paddingX = fontSize * 0.55;
-    const paddingY = fontSize * 0.32;
+    const paddingX = finalFontSize * 0.55;
+    const paddingY = finalFontSize * 0.32;
     const boxWidth = Math.min(widestLine + paddingX * 2, width * 0.86);
     const boxHeight = totalHeight + paddingY * 2;
 
@@ -897,24 +947,16 @@ function createTextOverlay(width, height) {
     const boxY = centerY - boxHeight / 2;
 
     context.save();
-    context.shadowColor = "transparent";
     context.fillStyle = `rgba(0,0,0,${clamp(state.blurStrength / 60, 0.03, 0.35)})`;
-
-    context.beginPath();
-    context.roundRect(
-      boxX,
-      boxY,
-      boxWidth,
-      boxHeight,
-      fontSize * 0.35
-    );
+    drawRoundedRect(context, boxX, boxY, boxWidth, boxHeight, finalFontSize * 0.35);
     context.fill();
     context.restore();
   }
 
-  context.shadowColor = "rgba(0,0,0,0.38)";
-  context.shadowBlur = fontSize * 0.12;
-  context.shadowOffsetY = fontSize * 0.04;
+  context.fillStyle = state.textColor;
+  context.shadowColor = "rgba(0,0,0,.38)";
+  context.shadowBlur = finalFontSize * 0.12;
+  context.shadowOffsetY = finalFontSize * 0.04;
 
   let y = centerY - totalHeight / 2 + lineHeight / 2;
 
@@ -945,7 +987,6 @@ async function loadFFmpeg() {
 
   ffmpeg.on("progress", ({ progress }) => {
     if (!state.exporting) return;
-
     const percent = clamp(Math.round(progress * 100), 0, 99);
     setText(progressPercent, `${percent}%`);
     if (progressBar) progressBar.style.width = `${percent}%`;
@@ -966,34 +1007,15 @@ async function loadFFmpeg() {
 }
 
 /* =========================================
-   EXPORT DIMENSIONS & FILTER
+   OUTPUT DIMENSIONS & FILTER
 ========================================= */
-
-function getVideoDimensions() {
-  return new Promise((resolve, reject) => {
-    const video = document.createElement("video");
-    const url = URL.createObjectURL(state.file);
-
-    video.preload = "metadata";
-    video.src = url;
-
-    video.onloadedmetadata = () => {
-      const width = video.videoWidth || 1080;
-      const height = video.videoHeight || 1920;
-      URL.revokeObjectURL(url);
-      resolve({ width, height, duration: video.duration });
-    };
-
-    video.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Tidak dapat membaca ukuran video."));
-    };
-  });
-}
 
 function getOutputDimensions() {
   const height = state.resolution === 720 ? 1280 : 1920;
-  return { width: Math.round(height * 9 / 16), height };
+  return {
+    width: Math.round(height * 9 / 16),
+    height
+  };
 }
 
 function getFFmpegVideoFilter() {
@@ -1054,7 +1076,7 @@ async function exportVideo() {
     updateProgress(8, "Membaca video...");
 
     const ffmpeg = state.ffmpeg;
-    const inputName = "quietframe-input";
+    const inputName = "quietframe-input.mp4";
     const overlayName = "quietframe-overlay.png";
     const outputName = "quietframe-output.mp4";
 
@@ -1082,13 +1104,11 @@ async function exportVideo() {
     const selectedAudio =
       $('input[name="audioMode"]:checked')?.value || "original";
 
-    const videoFilter = getFFmpegVideoFilter();
-
     const command = [
       "-i", inputName,
       "-i", overlayName,
       "-filter_complex",
-      `[0:v]${videoFilter}[base];[base][1:v]overlay=0:0:format=auto[vout]`,
+      `[0:v]${getFFmpegVideoFilter()}[base];[base][1:v]overlay=0:0:format=auto[vout]`,
       "-map", "[vout]"
     ];
 
@@ -1181,7 +1201,7 @@ function createPreviewFullscreenButton() {
     const enabled = document.body.classList.toggle("preview-expanded");
     button.textContent = enabled ? "Tutup" : "Perbesar";
     button.setAttribute("aria-pressed", String(enabled));
-    requestAnimationFrame(applyPreviewAutoFit);
+    requestAnimationFrame(updateQuotePreview);
   });
 
   topline.appendChild(button);
@@ -1200,9 +1220,7 @@ if ("ResizeObserver" in window && previewScreen) {
 
   resizeObserver.observe(previewScreen);
 } else {
-  window.addEventListener("resize", () => {
-    updateQuotePreview();
-  });
+  window.addEventListener("resize", updateQuotePreview);
 }
 
 /* =========================================
