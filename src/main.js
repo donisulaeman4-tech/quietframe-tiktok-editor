@@ -1,11 +1,5 @@
-
 import { FFmpeg } from "https://esm.sh/@ffmpeg/ffmpeg@0.12.6";
-import { fetchFile, toBlobURL } from "https://esm.sh/@ffmpeg/util@0.12.1";
-
-/* =========================================
-   QUIETFRAME — MAIN JAVASCRIPT
-   AUTO FIT — SIMETRIS DAN TIKTOK SAFE AREA
-========================================= */
+import { fetchFile } from "https://esm.sh/@ffmpeg/util@0.12.1";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -17,15 +11,12 @@ const state = {
   mediaURL: null,
   outputURL: null,
   sourceDuration: null,
-
   ffmpeg: null,
   ffmpegReady: false,
   exporting: false,
   stage: 1,
-
   duration: 15,
   resolution: 1080,
-
   text: "",
   textSize: 32,
   textColor: "#ffffff",
@@ -36,32 +27,14 @@ const state = {
   offsetX: 0,
   autoFit: true,
   paragraphGap: 12,
-
   blurEnabled: false,
   blurStrength: 8,
-
   filter: "normal",
   brightness: 100,
   contrast: 100,
   saturation: 100,
   temperature: 0
 };
-
-/*
-  Area aman dibuat simetris.
-
-  Horizontal:
-  Kiri 18%
-  Kanan 18%
-
-  Vertikal:
-  Atas 20%
-  Bawah 20%
-
-  Area teks:
-  Lebar 64%
-  Tinggi 60%
-*/
 
 const SAFE_AREA = {
   left: 0.18,
@@ -104,8 +77,6 @@ const FILTER_PREVIEW = {
   golden: "sepia(.3) saturate(1.2)",
   night: "brightness(.88) contrast(1.12) saturate(.75)"
 };
-
-/* ELEMENT REFERENCES */
 
 const videoInput = $("#videoInput");
 const uploadButton = $("#uploadButton");
@@ -170,12 +141,6 @@ const audioGroup = $("#audioGroup");
 
 let fullscreenButton = null;
 
-
-/* =========================================
-   AUTO SAVE & RESTORE — INDEXEDDB
-   Menyimpan pengaturan dan file media.
-========================================= */
-
 const SESSION_DB_NAME = "quietframe-session-db";
 const SESSION_DB_VERSION = 1;
 const SESSION_STORE_NAME = "sessions";
@@ -184,6 +149,7 @@ const SESSION_KEY = "current";
 let sessionDBPromise = null;
 let sessionSaveTimer = null;
 let restoringSession = false;
+let historyInitialized = false;
 
 function openSessionDB() {
   if (sessionDBPromise) return sessionDBPromise;
@@ -349,9 +315,11 @@ async function restoreSession() {
         state[key] = Number(savedState[key]);
       }
     });
+
     ["autoFit", "blurEnabled"].forEach((key) => {
       if (typeof savedState[key] === "boolean") state[key] = savedState[key];
     });
+
     [
       "text", "textColor", "font", "position", "alignment", "filter"
     ].forEach((key) => {
@@ -384,6 +352,7 @@ async function restoreSession() {
       saturation: state.saturation,
       temperature: state.temperature
     };
+
     Object.entries(controlValues).forEach(([id, value]) => {
       const control = $("#" + id);
       if (control) control.value = String(value);
@@ -395,6 +364,7 @@ async function restoreSession() {
       );
       textColor.value = hasColor ? state.textColor : "#ffffff";
     }
+
     if (customTextColor) customTextColor.value = state.textColor;
     if (autoFit) autoFit.checked = state.autoFit;
     if (blurEnabled) blurEnabled.checked = state.blurEnabled;
@@ -405,30 +375,38 @@ async function restoreSession() {
     $$('input[name="audioMode"]').forEach((radio) => {
       radio.checked = radio.value === savedState.audioMode;
     });
+
     $$(".audio-option").forEach((option) => {
       option.classList.toggle("active", Boolean(option.querySelector("input")?.checked));
     });
+
     $$(".position-button").forEach((button) => {
       button.classList.toggle("active", button.dataset.position === state.position);
     });
+
     $$(".align-button").forEach((button) => {
       button.classList.toggle("active", button.dataset.align === state.alignment);
     });
+
     $$(".font-option").forEach((button) => {
       button.classList.toggle("active", button.dataset.font === state.font);
     });
+
     $$(".filter-option").forEach((button) => {
       button.classList.toggle("active", button.dataset.filter === state.filter);
     });
 
     const activePanel = savedState.activePanel || "panel-text";
     const activeTab = savedState.activeTab || "text";
+
     $$(".settings-panel").forEach((panel) => {
       panel.classList.toggle("active", panel.id === activePanel);
     });
+
     $$(".tool-tab").forEach((button) => {
       button.classList.toggle("active", button.dataset.panel === activeTab);
     });
+
     mockTikTokUI?.classList.toggle("hidden", Boolean(savedState.tiktokHidden));
     toggleTikTokUI?.classList.toggle("active", !savedState.tiktokHidden);
 
@@ -446,7 +424,11 @@ async function restoreSession() {
     updateQuotePreview();
     updateMediaAppearance();
     updateDurationHint();
-    showStage(saved.file ? clamp(Number(savedState.stage) || 1, 1, 3) : 1);
+
+    const restoredStage = saved.file ? clamp(Number(savedState.stage) || 1, 1, 3) : 1;
+    rebuildStageHistory(restoredStage);
+    showStage(restoredStage, { skipHistory: true });
+
     console.info("[QuietFrame] Sesi terakhir berhasil dipulihkan.");
   } catch (error) {
     console.warn("[QuietFrame] Sesi sebelumnya tidak dapat dipulihkan:", error);
@@ -464,9 +446,6 @@ window.addEventListener("pagehide", () => {
   clearTimeout(sessionSaveTimer);
   saveSessionNow();
 });
-
-
-/* UTILITIES */
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -495,24 +474,87 @@ function formatFileSize(bytes) {
     : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function showStage(step) {
-  state.stage = step;
+function rebuildStageHistory(stage) {
+  const target = clamp(Number(stage) || 1, 1, 3);
+  try {
+    history.replaceState({ quietFrame: true, stage: 1 }, "", location.href);
+    for (let step = 2; step <= target; step++) {
+      history.pushState({ quietFrame: true, stage: step }, "", location.href);
+    }
+    historyInitialized = true;
+  } catch (error) {
+    console.warn("[QuietFrame] Riwayat navigasi tidak tersedia:", error);
+  }
+}
+
+function showStage(step, options = {}) {
+  const target = clamp(Number(step) || 1, 1, 3);
+  const previousStage = state.stage;
+
+  if (previousStage === 3 && target !== 3 && state.exporting) {
+    cancelExport();
+  }
+
+  if (!options.skipHistory && target !== previousStage) {
+    try {
+      const historyState = { quietFrame: true, stage: target };
+      if (!historyInitialized || options.replaceHistory) {
+        history.replaceState(historyState, "", location.href);
+        historyInitialized = true;
+      } else {
+        history.pushState(historyState, "", location.href);
+      }
+    } catch (error) {
+      console.warn("[QuietFrame] Riwayat navigasi tidak dapat diperbarui:", error);
+    }
+  }
+
+  state.stage = target;
 
   $$(".stage").forEach((stage) => {
-    stage.classList.toggle("active", Number(stage.dataset.step) === step);
+    stage.classList.toggle("active", Number(stage.dataset.step) === target);
   });
 
-  document.body.dataset.stage = String(step);
+  document.body.dataset.stage = String(target);
 
-  if (step !== 2) exitPreviewFullscreen();
+  if (target !== 2) exitPreviewFullscreen();
 
-  if (step === 2) {
+  if (target === 2) {
     requestAnimationFrame(() => {
       updateQuotePreview();
       updateMediaAppearance();
     });
   }
+
+  scheduleSessionSave();
 }
+
+function navigateBackTo(target) {
+  if (
+    historyInitialized &&
+    history.state?.quietFrame === true &&
+    Number(history.state.stage) === state.stage &&
+    state.stage > target
+  ) {
+    history.back();
+    return;
+  }
+
+  showStage(target, { replaceHistory: true });
+}
+
+window.addEventListener("popstate", (event) => {
+  const target = Number(event.state?.stage);
+  if (event.state?.quietFrame !== true || ![1, 2, 3].includes(target)) return;
+
+  showStage(target, { skipHistory: true });
+
+  if (target === 2 && state.mediaType === "video") {
+    previewVideo?.play().catch(() => {});
+  } else {
+    previewVideo?.pause();
+  }
+});
 
 function updateCharacterCount() {
   const value = quoteInput?.value || "";
@@ -567,8 +609,6 @@ function revokeMediaURL() {
   if (state.mediaURL) URL.revokeObjectURL(state.mediaURL);
   state.mediaURL = null;
 }
-
-/* MEDIA UPLOAD */
 
 uploadButton?.addEventListener("click", () => videoInput?.click());
 
@@ -670,8 +710,6 @@ removeVideo?.addEventListener("click", () => {
   updateDurationHint();
 });
 
-/* NAVIGATION */
-
 quoteInput?.addEventListener("input", () => {
   state.text = quoteInput.value;
   updateCharacterCount();
@@ -695,7 +733,7 @@ startEditing?.addEventListener("click", () => {
 
 backToUpload?.addEventListener("click", () => {
   previewVideo?.pause();
-  showStage(1);
+  navigateBackTo(1);
 });
 
 continueToExport?.addEventListener("click", () => {
@@ -708,11 +746,9 @@ continueToExport?.addEventListener("click", () => {
 });
 
 backToEditor?.addEventListener("click", () => {
-  showStage(2);
+  navigateBackTo(2);
   if (state.mediaType === "video") previewVideo?.play().catch(() => {});
 });
-
-/* VIDEO PLAY / PAUSE */
 
 previewPlay?.addEventListener("click", async () => {
   if (!previewVideo || state.mediaType !== "video") return;
@@ -733,14 +769,10 @@ previewPlay?.addEventListener("click", async () => {
 previewVideo?.addEventListener("play", () => setText(playIcon, "Ⅱ"));
 previewVideo?.addEventListener("pause", () => setText(playIcon, "▶"));
 
-/* TIKTOK UI */
-
 toggleTikTokUI?.addEventListener("click", () => {
   const hidden = mockTikTokUI?.classList.toggle("hidden");
   toggleTikTokUI.classList.toggle("active", !hidden);
 });
-
-/* EDITOR TABS */
 
 $$(".tool-tab").forEach((button) => {
   button.addEventListener("click", () => {
@@ -755,8 +787,6 @@ $$(".tool-tab").forEach((button) => {
     });
   });
 });
-
-/* TEXT WRAPPING */
 
 function wrapText(context, text, maxWidth) {
   const lines = [];
@@ -805,10 +835,6 @@ function wrapText(context, text, maxWidth) {
 
   return lines;
 }
-
-/* =========================================
-   AUTO FIT — SAFE AREA CALCULATION
-========================================= */
 
 function getSafePreviewDimensions() {
   const width = previewScreen?.clientWidth || 300;
@@ -889,11 +915,6 @@ function getPreviewFontSize() {
   });
 }
 
-/*
-  Mengatur kotak teks tepat pada area aman.
-  Aturan ini tetap berlaku walaupun UI TikTok disembunyikan.
-*/
-
 function applyPreviewSafeArea() {
   if (!quotePanel || !quotePanelInner) return;
 
@@ -925,8 +946,6 @@ function applyPreviewSafeArea() {
   quotePanelInner.style.boxSizing = "border-box";
 }
 
-/* UPDATE PREVIEW */
-
 function updateQuotePreview() {
   if (!previewQuote || !quotePanel || !quotePanelInner) return;
 
@@ -951,11 +970,6 @@ function updateQuotePreview() {
   previewQuote.style.lineHeight = "1.25";
   previewQuote.style.display = state.textSize === 0 ? "none" : "block";
 
-  /*
-    Ukuran huruf dihitung dari lebar dan tinggi area aman,
-    bukan dari seluruh layar.
-  */
-
   const fontSize = getPreviewFontSize();
   previewQuote.style.fontSize = `${fontSize}px`;
 
@@ -971,11 +985,6 @@ function updateQuotePreview() {
 
   quotePanelInner.classList.toggle("blur-active", state.blurEnabled);
 
-  /*
-    Offset manual tetap tersedia.
-    Posisi awal teks tetap berada tepat di tengah area aman.
-  */
-
   quotePanel.style.setProperty(
     "--quote-offset",
     `${(state.offset / 100) * dimensions.height * 0.35}px`
@@ -988,8 +997,6 @@ function updateQuotePreview() {
 }
 
 editorQuote?.addEventListener("input", updateQuotePreview);
-
-/* TEXT SLIDERS */
 
 [
   ["textSize", "textSizeValue", (value) => {
@@ -1024,8 +1031,6 @@ editorQuote?.addEventListener("input", updateQuotePreview);
   });
 });
 
-/* TEXT COLOR */
-
 textColor?.addEventListener("change", () => {
   state.textColor = textColor.value;
 
@@ -1045,8 +1050,6 @@ customTextColor?.addEventListener("input", () => {
 
   updateQuotePreview();
 });
-
-/* POSITION AND ALIGNMENT */
 
 $$(".position-button").forEach((button) => {
   button.addEventListener("click", () => {
@@ -1081,8 +1084,6 @@ blurEnabled?.addEventListener("change", () => {
   state.blurEnabled = blurEnabled.checked;
   updateQuotePreview();
 });
-
-/* DRAG TEXT AND CENTER GUIDES */
 
 if (quotePanel && previewScreen) {
   let dragging = false;
@@ -1138,7 +1139,6 @@ if (quotePanel && previewScreen) {
 
   const stopDragging = () => {
     dragging = false;
-
     guideVertical?.classList.remove("visible");
     guideHorizontal?.classList.remove("visible");
   };
@@ -1147,8 +1147,6 @@ if (quotePanel && previewScreen) {
   quotePanel.addEventListener("pointercancel", stopDragging);
   quotePanel.addEventListener("lostpointercapture", stopDragging);
 }
-
-/* FONT SELECTION */
 
 $$(".font-option").forEach((button) => {
   button.addEventListener("click", () => {
@@ -1161,8 +1159,6 @@ $$(".font-option").forEach((button) => {
     updateQuotePreview();
   });
 });
-
-/* FILTERS AND IMAGE ADJUSTMENTS */
 
 function updateMediaAppearance() {
   const filter = FILTER_PREVIEW[state.filter] || "";
@@ -1260,8 +1256,6 @@ $("#resetAdjustments")?.addEventListener("click", () => {
 
   updateMediaAppearance();
 });
-
-/* EXPORT DURATION */
 
 function setDuration(value, updateInput = true) {
   const duration = Number(value);
@@ -1365,11 +1359,6 @@ $$('input[name="audioMode"]').forEach((radio) => {
   });
 });
 
-/* =========================================
-   CANVAS TEXT OVERLAY FOR EXPORT
-   Menggunakan SAFE AREA yang sama.
-========================================= */
-
 function createTextOverlay(width, height) {
   const canvas = document.createElement("canvas");
 
@@ -1423,13 +1412,6 @@ function createTextOverlay(width, height) {
     lineCount * lineHeight +
     Math.max(0, paragraphs.length - 1) * gap;
 
-  /*
-    Posisi vertikal mengikuti area aman:
-    Atas  = bagian atas area aman.
-    Tengah = titik tengah area aman.
-    Bawah = bagian bawah area aman.
-  */
-
   let centerY;
 
   if (state.position === "top") {
@@ -1441,11 +1423,6 @@ function createTextOverlay(width, height) {
   }
 
   centerY += (state.offset / 100) * height * 0.35;
-
-  /*
-    Titik horizontal tetap simetris.
-    Teks rata kiri/kanan tetap berada di dalam area aman.
-  */
 
   let x;
 
@@ -1558,9 +1535,18 @@ function getExportFontSize(width, height, logicalScale) {
   });
 }
 
-/* FFMPEG */
-
 let ffmpegLoadPromise = null;
+let ffmpegLoadController = null;
+let exportRunId = 0;
+
+async function fetchFFmpegAsset(url, mimeType, signal) {
+  const response = await fetch(url, { signal, cache: "force-cache" });
+  if (!response.ok) {
+    throw new Error(`Gagal mengunduh mesin ekspor (HTTP ${response.status}).`);
+  }
+  const data = await response.arrayBuffer();
+  return URL.createObjectURL(new Blob([data], { type: mimeType }));
+}
 
 async function loadFFmpeg() {
   if (state.ffmpegReady) return;
@@ -1575,6 +1561,14 @@ async function loadFFmpeg() {
     let lastError = null;
 
     for (const baseURL of cdnBases) {
+      if (!state.exporting) throw new Error("Proses ekspor dibatalkan.");
+
+      let coreURL = null;
+      let wasmURL = null;
+      const controller = new AbortController();
+      ffmpegLoadController = controller;
+      const timeout = setTimeout(() => controller.abort(), 30000);
+
       try {
         if (!state.ffmpeg) {
           state.ffmpeg = new FFmpeg();
@@ -1590,20 +1584,45 @@ async function loadFFmpeg() {
         }
 
         updateProgress(3, "Mengunduh mesin ekspor...");
-        await state.ffmpeg.load({
-          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm")
-        });
+        [coreURL, wasmURL] = await Promise.all([
+          fetchFFmpegAsset(`${baseURL}/ffmpeg-core.js`, "text/javascript", controller.signal),
+          fetchFFmpegAsset(`${baseURL}/ffmpeg-core.wasm`, "application/wasm", controller.signal)
+        ]);
+
+        if (!state.exporting) throw new Error("Proses ekspor dibatalkan.");
+
+        let loadTimer;
+
+        await Promise.race([
+          state.ffmpeg.load({ coreURL, wasmURL }),
+          new Promise((_, reject) => {
+            loadTimer = setTimeout(() => {
+              controller.abort();
+              reject(new Error("Waktu pemuatan mesin ekspor habis (30 detik)."));
+            }, 30000);
+          })
+        ]).finally(() => clearTimeout(loadTimer));
+
         state.ffmpegReady = true;
         return;
       } catch (error) {
-        lastError = error;
-        console.warn("[QuietFrame] CDN FFmpeg gagal:", baseURL, error);
+        lastError = controller.signal.aborted
+          ? new Error("Waktu unduh atau pemuatan mesin ekspor habis.")
+          : error;
+
+        console.warn("[QuietFrame] CDN FFmpeg gagal:", baseURL, lastError);
+
         try {
           await state.ffmpeg?.terminate();
         } catch {}
+
         state.ffmpeg = null;
         state.ffmpegReady = false;
+      } finally {
+        clearTimeout(timeout);
+        if (coreURL) URL.revokeObjectURL(coreURL);
+        if (wasmURL) URL.revokeObjectURL(wasmURL);
+        if (ffmpegLoadController === controller) ffmpegLoadController = null;
       }
     }
 
@@ -1683,6 +1702,30 @@ function validateExport() {
   return true;
 }
 
+function cancelExport() {
+  if (!state.exporting) return;
+
+  exportRunId++;
+  state.exporting = false;
+  ffmpegLoadController?.abort();
+
+  const activeFFmpeg = state.ffmpeg;
+  state.ffmpeg = null;
+  state.ffmpegReady = false;
+  ffmpegLoadPromise = null;
+
+  try {
+    activeFFmpeg?.terminate();
+  } catch {}
+
+  if (exportButton) {
+    exportButton.disabled = false;
+    exportButton.classList.remove("loading");
+  }
+
+  updateProgress(0, "Ekspor dibatalkan.");
+}
+
 async function exportVideo() {
   if (state.exporting) return;
 
@@ -1691,6 +1734,7 @@ async function exportVideo() {
   if (!validateExport()) return;
 
   state.exporting = true;
+  const thisExportRun = ++exportRunId;
 
   if (exportButton) {
     exportButton.disabled = true;
@@ -1707,6 +1751,7 @@ async function exportVideo() {
 
   try {
     await loadFFmpeg();
+    if (thisExportRun !== exportRunId) return;
 
     const ffmpeg = state.ffmpeg;
 
@@ -1722,6 +1767,8 @@ async function exportVideo() {
       inputName,
       await fetchFile(state.file)
     );
+
+    if (thisExportRun !== exportRunId) return;
 
     updateProgress(20, "Membuat teks...");
 
@@ -1744,6 +1791,8 @@ async function exportVideo() {
       overlayName,
       await fetchFile(overlayBlob)
     );
+
+    if (thisExportRun !== exportRunId) return;
 
     updateProgress(30, "Menyiapkan ekspor...");
 
@@ -1801,6 +1850,7 @@ async function exportVideo() {
     updateProgress(40, "Merender video...");
 
     const exitCode = await ffmpeg.exec(command);
+    if (thisExportRun !== exportRunId) return;
 
     if (exitCode !== 0) {
       throw new Error(
@@ -1811,6 +1861,7 @@ async function exportVideo() {
     updateProgress(94, "Menyiapkan hasil...");
 
     const outputData = await ffmpeg.readFile(outputName);
+    if (thisExportRun !== exportRunId) return;
 
     const outputBlob = new Blob(
       [outputData],
@@ -1841,6 +1892,8 @@ async function exportVideo() {
       } catch {}
     }
   } catch (error) {
+    if (thisExportRun !== exportRunId) return;
+
     console.error("QuietFrame export error:", error);
 
     showError(
@@ -1849,11 +1902,13 @@ async function exportVideo() {
 
     setText(progressLabel, "Ekspor gagal");
   } finally {
-    state.exporting = false;
+    if (thisExportRun === exportRunId) {
+      state.exporting = false;
 
-    if (exportButton) {
-      exportButton.disabled = false;
-      exportButton.classList.remove("loading");
+      if (exportButton) {
+        exportButton.disabled = false;
+        exportButton.classList.remove("loading");
+      }
     }
   }
 }
@@ -1866,8 +1921,6 @@ downloadButton?.addEventListener("click", (event) => {
     showError("Video belum berhasil dibuat.");
   }
 });
-
-/* FULLSCREEN PREVIEW */
 
 function createPreviewFullscreenButton() {
   const topline = $(".preview-topline");
@@ -1933,8 +1986,6 @@ document.addEventListener("keydown", (event) => {
 
 createPreviewFullscreenButton();
 
-/* RESIZE AND INITIALIZATION */
-
 if ("ResizeObserver" in window && previewScreen) {
   const observer = new ResizeObserver(() => {
     if (state.stage === 2) {
@@ -1948,7 +1999,8 @@ if ("ResizeObserver" in window && previewScreen) {
 }
 
 function initialize() {
-  showStage(1);
+  rebuildStageHistory(1);
+  showStage(1, { skipHistory: true });
 
   updateCharacterCount();
   updateQuotePreview();
